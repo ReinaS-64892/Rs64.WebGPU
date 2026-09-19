@@ -1,0 +1,9 @@
+[submodule "lib/dawn"]
+	path = lib/dawn
+	url = https://github.com/google/dawn.git
+[submodule "lib/wgpu-native"]
+	path = lib/wgpu-native
+	url = https://github.com/gfx-rs/wgpu-native.git
+[submodule "lib/webgpu-headers"]
+	path = lib/webgpu-headers
+	url = https://github.com/webgpu-native/webgpu-headers.git
