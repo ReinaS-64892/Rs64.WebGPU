@@ -3,7 +3,7 @@
 
 using System;
 using System.Linq;
-using System.Runtime.InteropServices;
+using System.Runtime.CompilerServices;
 using System.Threading.Tasks;
 
 namespace Rs64.WebGPU;
@@ -71,6 +71,25 @@ public class WebGPUInstance : IDisposable
     internal void InstanceProcessEvents()
     {
         unsafe { FFI.WGPUInstance.wgpuInstanceProcessEvents(Native.GetPtr()); }
+    }
+
+
+    internal void CreateSurface(WebGPUSurfaceDescriptor webGPUSurfaceDescriptor)
+    {
+        unsafe
+        {
+            var stack = new StackAllocAsFFIArea(stackalloc byte[256]);
+            FFI.WGPUSurfaceDescriptor surfaceDescriptor = new();
+
+            var labelSpan = FFI.WGPUStringView.ConvertSpan(webGPUSurfaceDescriptor.Label);
+            fixed (byte* ptr = labelSpan)
+            {
+                surfaceDescriptor.Label = new(ptr, labelSpan.Length);
+                surfaceDescriptor.NextInChain = (FFI.WGPUChainedStruct*)Unsafe.AsPointer(ref webGPUSurfaceDescriptor.GetExtensionSurfaceSource(stack));
+
+                var surface = FFI.WGPUInstance.wgpuInstanceCreateSurface(Native.GetPtr(), &surfaceDescriptor);
+            }
+        }
     }
 
 

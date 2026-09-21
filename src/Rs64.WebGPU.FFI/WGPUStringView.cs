@@ -5,6 +5,7 @@
 // SPDX-FileCopyrightText: Copyright 2019-2023 WebGPU-Native developers
 using System;
 using System.Runtime.InteropServices;
+using System.Text;
 
 namespace Rs64.WebGPU.FFI;
 
@@ -35,7 +36,18 @@ internal unsafe ref struct WGPUStringView
     // utf 8 string ... 
     public byte* StringData;
     public nuint Length;
-
+    public WGPUStringView() { }
+    public WGPUStringView(byte* ptr, int length) : this()
+    {
+        StringData = ptr;
+        Length = (nuint)length;
+    }
     public static WGPUStringView Null => new() { StringData = null, Length = Webgpu.WGPU_STRLEN };
     public static WGPUStringView Empty => new() { StringData = null, Length = 0 };
+
+    internal static Span<byte> ConvertSpan(string? label)
+    {
+        if (label is null) { return Span<byte>.Empty; }
+        return Encoding.UTF8.GetBytes(label);
+    }
 }
