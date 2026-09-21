@@ -559,14 +559,21 @@ public const string {LIB_NAME_DEF} = "wgpu_native";
                 strBuild.AppendLine("public WGPUCallbackMode CallBackMode;");
                 strBuild.AppendLine();
 
-                var delegateArg = string.Join(", ", callBack.Arguments.Select(a =>
-                {
-                    var isPointer = a.Pointer.HasValue;
-                    isPointer |= IsObject(a.TypeID);
+                var callBackFullArg = callBack.Arguments.Concat(new WebGPUJson.WebGPUJsonParameterType[]{
+                    new(){Name = "userData1",TypeID = "c_void",Optional = true, Pointer = (WebGPUJson.WebGPUJsonPointer?)-1},
+                    new(){Name = "userData2",TypeID = "c_void",Optional = true, Pointer = (WebGPUJson.WebGPUJsonPointer?)-1},
+                }).ToArray();
+                var delegateArg = string.Join(", ", callBackFullArg.Select(a =>
+                        {
+                            var isPointer = a.Pointer.HasValue;
+                            isPointer |= IsObject(a.TypeID);
 
-                    return TypeNameTranslate(a.TypeID) + (isPointer ? "*" : "");
-                }));
-                strBuild.AppendLine($"public delegate* unmanaged<{delegateArg},void> {typeName};");
+                            return TypeNameTranslate(a.TypeID) + (isPointer ? "*" : "");
+                        }
+                    )
+                );
+                var unmanagedDelegateTypeStr = $"delegate* unmanaged<{delegateArg},void>";
+                strBuild.AppendLine($"public {unmanagedDelegateTypeStr} {typeName};");
 
                 strBuild.AppendLine();
                 strBuild.AppendLine("[WebGPUNullable]");
@@ -577,18 +584,50 @@ public const string {LIB_NAME_DEF} = "wgpu_native";
 
                 strBuild.AppendLine();
                 strBuild.AppendLine("}");
-            }
 
+                strBuild.AppendLine();
+                //}
+                //{
 
-            {
                 var arguments = GenerateArguments(callBack.Arguments);
+                var fullArg = GenerateArguments(callBackFullArg);
 
-                strBuild.AppendLine("//  reference interface");
-                strBuild.AppendLine($"internal interface I{typeName}");
+                var interfaceName = $"I{typeName}";
+
+                strBuild.AppendLine("//  managed call back interface");
+                strBuild.AppendLine($"internal unsafe interface {interfaceName}");
                 strBuild.AppendLine("{");
-                strBuild.AppendLine($"static abstract unsafe void CallBack ({arguments});");
+                strBuild.AppendLine($"void CallBack ({arguments});");
                 strBuild.AppendLine("}");
 
+                strBuild.AppendLine();
+                strBuild.AppendLine();
+
+                strBuild.AppendLine("// managed wrapper ");
+                strBuild.AppendLine($"internal static unsafe class {typeName}ManagedWrapper");
+                strBuild.AppendLine("{");
+                strBuild.AppendLine();
+                strBuild.AppendLine($"public static void* CreateUserData({interfaceName} receiverInterface)");
+                strBuild.AppendLine("{");
+                strBuild.AppendLine("var interfaceHandle = GCHandle.Alloc(receiverInterface);");
+                strBuild.AppendLine("var gcHandlePtr = (void*)GCHandle.ToIntPtr(interfaceHandle);");
+                strBuild.AppendLine("return gcHandlePtr;");
+                strBuild.AppendLine("}");
+                strBuild.AppendLine();
+                strBuild.AppendLine("[UnmanagedCallersOnly]");
+                strBuild.AppendLine($"public static void CallBack ({fullArg})");
+                strBuild.AppendLine("{");
+                strBuild.AppendLine($"var gcHandle = GCHandle.FromIntPtr((nint)userData1);");
+                strBuild.AppendLine("try{");
+                strBuild.AppendLine($"var i =({interfaceName})gcHandle.Target!;");
+                strBuild.AppendLine($"i.CallBack({string.Join(",", callBack.Arguments.Select(a => a.Name))});");
+                strBuild.AppendLine("}");
+                strBuild.AppendLine("finally{");
+                strBuild.AppendLine("gcHandle.Free();");
+                strBuild.AppendLine("}");
+                strBuild.AppendLine("}");
+                strBuild.AppendLine();
+                strBuild.AppendLine("}");
             }
             yield return (typeName + ".cs", strBuild.ToString());
         }
