@@ -19,13 +19,14 @@ public class WebGPUInstance : IDisposable
     public Task<WebGPUAdapter> RequestAdapter()
     {
         var callBack = new RequestAdapterCallBack(new TaskCompletionSource<WebGPUAdapter>());
-        // FFI.WGPURequestAdapterCallbackManagedWrapper
         unsafe
         {
-            var ffiCallBack = new FFI.WGPURequestAdapterCallbackInfo();
-            // ffiCallBack.CallBackMode = FFI.WGPUCallbackMode.AllowProcessEvents;
-            ffiCallBack.WGPURequestAdapterCallback = &FFI.WGPURequestAdapterCallbackManagedWrapper.CallBack;
-            ffiCallBack.UserData1 = FFI.WGPURequestAdapterCallbackManagedWrapper.CreateUserData(callBack);
+            var ffiCallBack = new FFI.WGPURequestAdapterCallbackInfo
+            {
+                CallBackMode = FFI.WGPUCallbackMode.AllowSpontaneous,
+                WGPURequestAdapterCallback = &FFI.WGPURequestAdapterCallbackManagedWrapper.CallBack,
+                UserData1 = FFI.WGPURequestAdapterCallbackManagedWrapper.CreateUserData(callBack)
+            };
             FFI.WGPUInstance.wgpuInstanceRequestAdapter(Native.GetPtr(), null, ffiCallBack);
         }
         return callBack.Task.Task;
