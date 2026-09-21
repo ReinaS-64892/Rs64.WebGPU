@@ -93,7 +93,7 @@ internal unsafe ref struct StackAllocAsFFIArea(Span<byte> bytes)
     where T : unmanaged, allows ref struct
     {
         var allocateSize = sizeof(T);
-        if (_length < (_stackCount + allocateSize)) { throw new(); }
+        if (_length < (_stackCount + allocateSize)) { throw new StackAreaOverflowException(); }
         
         var targetPtr = _ptr + _stackCount;
 
