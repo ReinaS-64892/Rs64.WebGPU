@@ -4,13 +4,14 @@
 using System;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
+using System.Threading.Tasks;
 using FFI = Rs64.WebGPU.FFI;
 
 namespace Rs64.WebGPU;
 
 public class Class1
 {
-    internal static void Run()
+    internal static async Task Run()
     {
         var wgpuPath = "../../lib/wgpu-native/target/debug/libwgpu_native.so";
         // var lib = NativeLibrary.Load(wgpuPath);
@@ -68,10 +69,10 @@ public class Class1
             if (adapterInfoGetResult is FFI.WGPUStatus.Success)
             {
                 Console.WriteLine("-- read wGPUAdapterInfo --");
-                Console.WriteLine(ReadString(wGPUAdapterInfo.Vendor));
-                Console.WriteLine(ReadString(wGPUAdapterInfo.Architecture));
-                Console.WriteLine(ReadString(wGPUAdapterInfo.Device));
-                Console.WriteLine(ReadString(wGPUAdapterInfo.Description));
+                Console.WriteLine(wGPUAdapterInfo.Vendor.ReadStringView());
+                Console.WriteLine(wGPUAdapterInfo.Architecture.ReadStringView());
+                Console.WriteLine(wGPUAdapterInfo.Device.ReadStringView());
+                Console.WriteLine(wGPUAdapterInfo.Description.ReadStringView());
                 Console.WriteLine(wGPUAdapterInfo.BackendType);
                 Console.WriteLine(wGPUAdapterInfo.AdapterType);
                 Console.WriteLine(wGPUAdapterInfo.VendorId);
@@ -92,32 +93,67 @@ public class Class1
 
             Console.WriteLine("end ffi call");
         }
-
-    }
-    private unsafe static string? ReadString(FFI.WGPUStringView message)
-    {
-        if (message.StringData is not null && message.Length is not 0)
+        Console.WriteLine("--- --- ---");
         {
-            if (message.Length == FFI.Webgpu.WGPU_STRLEN)
-            {
-                return Marshal.PtrToStringUTF8((nint)message.StringData);
-            }
-            else
-            {
-                return Marshal.PtrToStringUTF8((nint)message.StringData, (int)message.Length);
-            }
+
+            Console.WriteLine("start safe ffi call");
+
+            // var instanceDesc = new FFI.WGPUInstanceDescriptor();
+
+            using var instance = WebGpu.CreateInstance();
+            Console.WriteLine("call WebGpu.CreateInstance");
+
+
+            // var option = new FFI.WGPURequestAdapterOptions();
+
+            var adapterRequest = instance.RequestAdapter();
+            Console.WriteLine("call instance.RequestAdapter");
+            
+            // instance.InstanceProcessEvents();
+
+            using var adapter = await adapterRequest;
+
+            // var adapter = CallbackReceiver.s_adapter;
+            // CallbackReceiver.s_adapter = null;
+
+            // FFI.WGPUAdapterInfo wGPUAdapterInfo = default;
+            // var adapterInfoGetResult = FFI.WGPUAdapter.wgpuAdapterGetInfo(adapter, &wGPUAdapterInfo);
+            // Console.WriteLine("call FnWgpuAdapterGetInfo");
+            // if (adapterInfoGetResult is FFI.WGPUStatus.Success)
+            // {
+            //     Console.WriteLine("-- read wGPUAdapterInfo --");
+            //     Console.WriteLine(ReadString(wGPUAdapterInfo.Vendor));
+            //     Console.WriteLine(ReadString(wGPUAdapterInfo.Architecture));
+            //     Console.WriteLine(ReadString(wGPUAdapterInfo.Device));
+            //     Console.WriteLine(ReadString(wGPUAdapterInfo.Description));
+            //     Console.WriteLine(wGPUAdapterInfo.BackendType);
+            //     Console.WriteLine(wGPUAdapterInfo.AdapterType);
+            //     Console.WriteLine(wGPUAdapterInfo.VendorId);
+            //     Console.WriteLine(wGPUAdapterInfo.DeviceId);
+            //     Console.WriteLine("-- end --");
+            // }
+            // else
+            // {
+            //     Console.WriteLine("Error!!!");
+            // }
+
+            // FFI.WGPUAdapterInfo.wgpuAdapterInfoFreeMembers(wGPUAdapterInfo);
+            // Console.WriteLine("call FnWgpuAdapterInfoFreeMembers");
+            // FFI.WGPUAdapter.wgpuAdapterRelease(adapter);
+            // Console.WriteLine("call FnWgpuAdapterRelease");
+
+            Console.WriteLine("end ffi call");
         }
-        return null;
     }
     unsafe class CallbackReceiver
     {
         // すごいアンセーフかもしれない()
         public static FFI.WGPUAdapter* s_adapter;
         [UnmanagedCallersOnly]
-        public static unsafe void CallBack(FFI.WGPURequestAdapterStatus status, [FFI.WebGPUPassedWithOwnership(true)] FFI.WGPUAdapter* adapter, [FFI.WebGPUOutString, FFI.WebGPUPassedWithOwnership(false)] FFI.WGPUStringView message)
+        public static unsafe void CallBack(FFI.WGPURequestAdapterStatus status, [FFI.WebGPUPassedWithOwnership(true)] FFI.WGPUAdapter* adapter, [FFI.WebGPUOutString, FFI.WebGPUPassedWithOwnership(false)] FFI.WGPUStringView message, void* ud1, void* ud2)
         {
             Console.WriteLine(status);
-            ReadString(message);
+            Console.WriteLine(message.ReadStringView());
             if (status is not FFI.WGPURequestAdapterStatus.Success) { return; }
             s_adapter = adapter;
         }
