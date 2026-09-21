@@ -22,6 +22,7 @@ public class Class1
         );
         unsafe
         {
+#pragma warning disable CS9123 // The '&' operator should not be used on parameters or local variables in async methods.
             // FFI.WGPUSupportedInstanceFeatures* features = null;
             // FFI.Webgpu.FnWgpuGetInstanceFeatures!(features);
 
@@ -92,6 +93,7 @@ public class Class1
             Console.WriteLine("call FnWgpuInstanceRelease");
 
             Console.WriteLine("end ffi call");
+#pragma warning restore CS9123 // The '&' operator should not be used on parameters or local variables in async methods.
         }
         Console.WriteLine("--- --- ---");
         {
@@ -111,6 +113,7 @@ public class Class1
 
             using var adapter = await instance.RequestAdapter();
             Console.WriteLine("call instance.RequestAdapter");
+            // instance.CreateSurface(new WebGPUWaylandSurfaceDescriptor() { Label = "ねこ" });
 
 
             // FFI.WGPUAdapterInfo wGPUAdapterInfo = default;
