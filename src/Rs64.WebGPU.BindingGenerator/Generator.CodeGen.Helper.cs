@@ -270,9 +270,9 @@ namespace Rs64.WebGPU.FFI;
         }
     }
 
-    private static void WriteNextInChain(StringBuilder strBuild)
+    private static void WriteNextInChain(StringBuilder strBuild, bool extensible)
     {
-        strBuild.AppendLine("public WGPUChainedStruct* NextInChain;");
+        strBuild.AppendLine($"public WGPUChainedStruct{(extensible ? "*" : "")} NextInChain;");
     }
 
 }

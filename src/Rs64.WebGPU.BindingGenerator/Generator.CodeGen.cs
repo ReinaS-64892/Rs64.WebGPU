@@ -367,9 +367,20 @@ public const string {LIB_NAME_DEF} = "wgpu_native";
             else strBuild.AppendLine();
 
             strBuild.AppendLine("{");
-            if (structDef.StructType is not WebGPUJson.WebGPUJsonStruct.WebGPUJsonStructType.Standalone)
+            switch (structDef.StructType)
             {
-                WriteNextInChain(strBuild);
+                default:
+                case WebGPUJson.WebGPUJsonStruct.WebGPUJsonStructType.Standalone:
+                    break;
+                case WebGPUJson.WebGPUJsonStruct.WebGPUJsonStructType.Extensible:
+                    WriteNextInChain(strBuild, true);
+                    break;
+                case WebGPUJson.WebGPUJsonStruct.WebGPUJsonStructType.Extensible_Callback_Arg:
+                    WriteNextInChain(strBuild, true);
+                    break;
+                case WebGPUJson.WebGPUJsonStruct.WebGPUJsonStructType.Extension:
+                    WriteNextInChain(strBuild, false);
+                    break;
             }
 
             foreach (var member in structDef.Members)
@@ -560,7 +571,7 @@ public const string {LIB_NAME_DEF} = "wgpu_native";
                 strBuild.AppendLine("internal unsafe ref partial struct " + typeName + "Info");
                 strBuild.AppendLine("{");
                 strBuild.AppendLine();
-                WriteNextInChain(strBuild);
+                WriteNextInChain(strBuild, true);
                 strBuild.AppendLine();
                 if (immediateCallBack is false)
                     strBuild.AppendLine("public WGPUCallbackMode CallBackMode;");
