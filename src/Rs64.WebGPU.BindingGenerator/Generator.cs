@@ -9,6 +9,7 @@ public static partial class Generator
     const string WGPU = "wgpu";
     const string WGPU_UP = "WGPU";
     const string FN_WGPU = "FnWgpu";
+    const string LIB_NAME_DEF = "RS64_WEBGPU_LIB";
     public static async Task Run()
     {
 
@@ -44,12 +45,22 @@ public static partial class Generator
             .Append(GenerateFunctions(ctx))
             .Append(GenerateConstants(ctx))
             .ToArray() // ここで ToArray することでこれまでのやつを全部その場で評価させる
-            .Append(GenerateLibraryInitializer(ctx))
+            // .Append(GenerateLibraryInitializer(ctx))
+            .Append(GenerateLibraryNameSelector(ctx))
+            // .Append(GenerateLibraryImporter(ctx))
         )
         {
             File.WriteAllText(Path.Combine(OUTPUT_PATH, dec.filename), dec.contents);
         }
     }
+
+
+    enum Backend
+    {
+        Wgpu,
+        Dawn,
+    }
+
     class CodeGenContext
     {
         public WebGPUJson WebGPUJson;

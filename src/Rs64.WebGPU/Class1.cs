@@ -13,8 +13,12 @@ public class Class1
     internal static void Run()
     {
         var wgpuPath = "../../lib/wgpu-native/target/debug/libwgpu_native.so";
-        var lib = NativeLibrary.Load(wgpuPath);
-        FFI.Webgpu.LoadLibrary(lib);
+        // var lib = NativeLibrary.Load(wgpuPath);
+        // FFI.Webgpu.LoadLibrary(lib);
+        NativeLibrary.SetDllImportResolver(
+            typeof(FFI.Webgpu).Assembly,
+            (p, _, _) => { if (p is not "wgpu_native") { return IntPtr.Zero; } return NativeLibrary.Load(wgpuPath); }
+        );
         unsafe
         {
             // FFI.WGPUSupportedInstanceFeatures* features = null;
@@ -29,9 +33,9 @@ public class Class1
             // }
             Console.WriteLine("start ffi call");
 
-            var instanceDesc = new FFI.WGPUInstanceDescriptor();
+            // var instanceDesc = new FFI.WGPUInstanceDescriptor();
 
-            var instance = FFI.Webgpu.FnWgpuCreateInstance!(&instanceDesc);
+            var instance = FFI.Webgpu.wgpuCreateInstance(null);
             Console.WriteLine("call FnWgpuCreateInstance");
             if (instance is null) { Console.WriteLine("instance creation failed!"); }
 
@@ -46,12 +50,12 @@ public class Class1
                 UserData2 = null,
             };
 
-            FFI.WGPUInstance.FnWgpuInstanceRequestAdapter!(instance, null, callBackInfo);
+            FFI.WGPUInstance.wgpuInstanceRequestAdapter(instance, null, callBackInfo);
             Console.WriteLine("call FnWgpuInstanceRequestAdapter");
             while (CallbackReceiver.s_adapter == null)
             {
 
-                FFI.WGPUInstance.FnWgpuInstanceProcessEvents!(instance);
+                FFI.WGPUInstance.wgpuInstanceProcessEvents(instance);
                 Console.WriteLine("call FnWgpuInstanceProcessEvents");
             }
 
@@ -59,8 +63,8 @@ public class Class1
             CallbackReceiver.s_adapter = null;
 
             FFI.WGPUAdapterInfo wGPUAdapterInfo = default;
-            var adapterInfoGetResult = FFI.WGPUAdapter.FnWgpuAdapterGetInfo!(adapter, &wGPUAdapterInfo);
-                Console.WriteLine("call FnWgpuAdapterGetInfo");
+            var adapterInfoGetResult = FFI.WGPUAdapter.wgpuAdapterGetInfo(adapter, &wGPUAdapterInfo);
+            Console.WriteLine("call FnWgpuAdapterGetInfo");
             if (adapterInfoGetResult is FFI.WGPUStatus.Success)
             {
                 Console.WriteLine("-- read wGPUAdapterInfo --");
@@ -78,16 +82,17 @@ public class Class1
             {
                 Console.WriteLine("Error!!!");
             }
-            
-            FFI.WGPUAdapterInfo.FnWgpuAdapterInfoFreeMembers!(wGPUAdapterInfo);
+
+            FFI.WGPUAdapterInfo.wgpuAdapterInfoFreeMembers(wGPUAdapterInfo);
             Console.WriteLine("call FnWgpuAdapterInfoFreeMembers");
-            FFI.WGPUAdapter.FnWgpuAdapterRelease!(adapter);
+            FFI.WGPUAdapter.wgpuAdapterRelease(adapter);
             Console.WriteLine("call FnWgpuAdapterRelease");
-            FFI.WGPUInstance.FnWgpuInstanceRelease!(instance);
+            FFI.WGPUInstance.wgpuInstanceRelease(instance);
             Console.WriteLine("call FnWgpuInstanceRelease");
 
             Console.WriteLine("end ffi call");
         }
+
     }
     private unsafe static string? ReadString(FFI.WGPUStringView message)
     {

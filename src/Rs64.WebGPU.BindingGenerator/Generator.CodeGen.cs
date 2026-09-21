@@ -5,7 +5,7 @@ namespace Rs64.WebGPU.BindingGenerator;
 
 public static partial class Generator
 {
-    private static (string delegateName, string FieldName) WriteDelegate(StringBuilder strBuild, WebGPUJson.WebGPUJsonFunction webGpuFunc, string typeNamePrefix = "", string thisArgument = "")
+    private static (string delegateName, string FieldName) WriteLibraryFunction(StringBuilder strBuild, WebGPUJson.WebGPUJsonFunction webGpuFunc, string typeNamePrefix = "", string thisArgument = "")
     {
         WriteDocument(strBuild, webGpuFunc.Document);
         WriteReturnDocument(strBuild, webGpuFunc.Returns?.Document);
@@ -48,8 +48,13 @@ public static partial class Generator
         if (argumentsBuilder.Length is not 0) argumentsBuilder.Remove(argumentsBuilder.Length - 1, 1);
 
         var functionFieldName = FN_WGPU + functionNameNonPrefix;
-        strBuild.AppendLine($"public delegate {returnType} {functionName}({argumentsBuilder});");
-        strBuild.AppendLine($"public static {functionName}? {functionFieldName};");
+        // delegate ...
+        // strBuild.AppendLine($"public delegate {returnType} {functionName}({argumentsBuilder});");
+        // strBuild.AppendLine($"public static {functionName}? {functionFieldName};");
+
+        strBuild.AppendLine($"[LibraryImport(Webgpu.{LIB_NAME_DEF})]");
+        strBuild.AppendLine($"public static partial {returnType} {functionName}({argumentsBuilder});");
+
         strBuild.AppendLine();
         return (functionName, functionFieldName);
     }
@@ -87,7 +92,35 @@ public static partial class Generator
 
         argumentsBuilder.AppendLine(TypeNameTranslate(arg.TypeID) + (isPointer ? "*" : "") + " " + arg.Name);
     }
+    private static (string filename, string contents) GenerateLibraryNameSelector(CodeGenContext ctx)
+    {
+        var webGPUJson = ctx.WebGPUJson;
+        var strBuild = new StringBuilder();
 
+        var className = webGPUJson.Name.ToPascalCase();
+        strBuild.AppendLine(CODE_TEMPLATE);
+        strBuild.AppendLine("internal static unsafe partial class " + className);
+        strBuild.AppendLine("{");
+        strBuild.AppendLine();
+
+        strBuild.AppendLine(
+$"""
+#if RS64_WEBGPU_BACKEND_WGPU_NATIVE
+public const string {LIB_NAME_DEF} = "wgpu_native";
+#elif RS64_WEBGPU_BACKEND_DAWN
+public const string {LIB_NAME_DEF} = "webgpu_dawn";
+#else
+// fallback is wgpu-native
+public const string {LIB_NAME_DEF} = "wgpu_native";
+#endif
+"""
+);
+
+        strBuild.AppendLine();
+        strBuild.AppendLine("}");
+
+        return (className + "LibraryName.cs", strBuild.ToString());
+    }
     private static (string filename, string contents) GenerateFunctions(CodeGenContext ctx)
     {
         var webGPUJson = ctx.WebGPUJson;
@@ -101,7 +134,7 @@ public static partial class Generator
 
         foreach (var webGpuFunc in webGPUJson.Functions)
         {
-            var (dName, fName) = WriteDelegate(strBuild, webGpuFunc);
+            var (dName, fName) = WriteLibraryFunction(strBuild, webGpuFunc);
             ctx.DllExportToList.Add(new(className, dName, fName));
         }
 
@@ -218,6 +251,39 @@ public static partial class Generator
 
         return (className + ".LibraryLoadHelper" + ".cs", strBuild.ToString());
     }
+
+    private static (string filename, string contents) GenerateLibraryImporter(CodeGenContext ctx)
+    {
+        var webGPUJson = ctx.WebGPUJson;
+        var strBuild = new StringBuilder();
+
+        var className = webGPUJson.Name.ToPascalCase();
+        strBuild.AppendLine(CODE_TEMPLATE);
+        strBuild.AppendLine("internal static unsafe partial class " + className);
+        strBuild.AppendLine("{");
+        strBuild.AppendLine();
+        strBuild.AppendLine();
+
+        strBuild.AppendLine("public static void LoadLibrary(IntPtr lib)");
+        strBuild.AppendLine("{");
+        strBuild.AppendLine();
+        foreach (var export in ctx.DllExportToList)
+        {
+            var str = "{"
+            + $" if(NativeLibrary.TryGetExport(lib, @\"{export.delegateName}\", out var addr))"
+            + $" {export.targetTypeName}.{export.filedName} = Marshal.GetDelegateForFunctionPointer<{export.targetTypeName}.{export.delegateName}>(addr);"
+            + " }";
+            strBuild.AppendLine(str);
+        }
+        strBuild.AppendLine();
+        strBuild.AppendLine("}");
+
+        strBuild.AppendLine();
+        strBuild.AppendLine();
+        strBuild.AppendLine("}");
+
+        return (className + ".LibraryLoadHelper" + ".cs", strBuild.ToString());
+    }
     private static IEnumerable<(string filename, string contents)> GenerateObjects(CodeGenContext ctx)
     {
         var webGPUJson = ctx.WebGPUJson;
@@ -230,7 +296,7 @@ public static partial class Generator
             WriteDocument(strBuild, objectDef.Document);
             WriteNameSpace(strBuild, objectDef.Namespace);
             if (objectDef.Extended is not null) { strBuild.AppendLine("// Extended : " + objectDef.Extended.ToString()); }
-            strBuild.AppendLine("internal unsafe struct " + typeName);
+            strBuild.AppendLine($"internal unsafe partial struct {typeName} : IWGPUObject<{typeName}>");
             strBuild.AppendLine("{");
             strBuild.AppendLine();
 
@@ -239,11 +305,27 @@ public static partial class Generator
                 .Append(new() { Name = "release" })
             )
             {
-                var (dName, fName) = WriteDelegate(strBuild, method, typeNameNoPrefix, $"{typeName}* thisArgument");
+                var (dName, fName) = WriteLibraryFunction(strBuild, method, typeNameNoPrefix, $"{typeName}* thisArgument");
                 ctx.DllExportToList.Add(new(typeName, dName, fName));
 
                 strBuild.AppendLine();
+                if (dName.EndsWith("AddRef"))
+                {
+                    strBuild.AppendLine($"public static void AddRef({typeName}* ptr)");
+                    strBuild.AppendLine("{");
+                    strBuild.AppendLine($"{dName}(ptr);");
+                    strBuild.AppendLine("}");
+                }
+                else if (dName.EndsWith("Release"))
+                {
+                    strBuild.AppendLine($"public static void Release({typeName}* ptr)");
+                    strBuild.AppendLine("{");
+                    strBuild.AppendLine($"{dName}(ptr);");
+                    strBuild.AppendLine("}");
+
+                }
             }
+
 
 
             strBuild.AppendLine();
@@ -271,10 +353,14 @@ public static partial class Generator
                 var typeOfs = structDef.Extends.Select(ExtendTypeNameTranslate).Select(t => $"typeof({t})");
                 strBuild.AppendLine($"[WebGPUExtensible([{string.Join(",", typeOfs)}])]");
             }
-            if (structDef.FreeMembers ?? false) strBuild.AppendLine("[WebGPUHaveFreeMembers]");
+            var havFree = structDef.FreeMembers ?? false;
+            if (havFree) strBuild.AppendLine("[WebGPUHaveFreeMembers]");
             WriteNameSpace(strBuild, structDef.Namespace);
             strBuild.AppendLine("[StructLayout(LayoutKind.Sequential)]");
-            strBuild.AppendLine("internal unsafe ref struct " + typeName);
+            strBuild.Append($"internal unsafe ref partial struct {typeName}");
+            if (havFree) strBuild.AppendLine($" : IWGPUStructHaveFreeMembers<{typeName}>");
+            else strBuild.AppendLine();
+
             strBuild.AppendLine("{");
             if (structDef.StructType is not WebGPUJson.WebGPUJsonStruct.WebGPUJsonStructType.Standalone)
             {
@@ -354,11 +440,16 @@ public static partial class Generator
                 strBuild.AppendLine();
             }
 
-            if (structDef.FreeMembers ?? false)
+            if (havFree)
             {
                 var method = new WebGPUJson.WebGPUJsonFunction() { Name = structDef.Name + "_free_members" };
-                var (dName, fName) = WriteDelegate(strBuild, method, "", $"{typeName} thisArgument");
+                var (dName, fName) = WriteLibraryFunction(strBuild, method, "", $"{typeName} thisArgument");
                 ctx.DllExportToList.Add(new(typeName, dName, fName));
+                strBuild.AppendLine();
+                strBuild.AppendLine($"public static void FreeMembers(ref {typeName} wgpuStruct)");
+                strBuild.AppendLine("{");
+                strBuild.AppendLine($"{dName}(wgpuStruct);");
+                strBuild.AppendLine("}");
                 strBuild.AppendLine();
             }
 
@@ -460,11 +551,10 @@ public static partial class Generator
                     strBuild.AppendLine("[WebGPUImmediateCallBack]");
 
                 strBuild.AppendLine("[StructLayout(LayoutKind.Sequential)]");
-                strBuild.AppendLine("internal unsafe ref struct " + typeName + "Info");
+                strBuild.AppendLine("internal unsafe ref partial struct " + typeName + "Info");
                 strBuild.AppendLine("{");
                 strBuild.AppendLine();
                 WriteNextInChain(strBuild);
-
                 strBuild.AppendLine();
                 strBuild.AppendLine("public WGPUCallbackMode CallBackMode;");
                 strBuild.AppendLine();
