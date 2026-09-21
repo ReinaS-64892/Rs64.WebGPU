@@ -47,6 +47,11 @@ public static partial class Generator
         }
         if (argumentsBuilder.Length is not 0) argumentsBuilder.Remove(argumentsBuilder.Length - 1, 1);
 
+        if (returnType is "void" && string.IsNullOrWhiteSpace(webGpuFunc.CallbackTypeID) is false)
+        {
+            returnType = WGPU_FUTURE;
+        }
+
         var functionFieldName = FN_WGPU + functionNameNonPrefix;
         // delegate ...
         // strBuild.AppendLine($"public delegate {returnType} {functionName}({argumentsBuilder});");
@@ -547,7 +552,8 @@ public const string {LIB_NAME_DEF} = "wgpu_native";
             {
                 WriteDocument(strBuild, callBack.Document);
                 WriteNameSpace(strBuild, callBack.Namespace);
-                if (callBack.CallBackStyle is WebGPUJson.WebGPUJsonCallbackStyle.Immediate)
+                var immediateCallBack = callBack.CallBackStyle is WebGPUJson.WebGPUJsonCallbackStyle.Immediate;
+                if (immediateCallBack)
                     strBuild.AppendLine("[WebGPUImmediateCallBack]");
 
                 strBuild.AppendLine("[StructLayout(LayoutKind.Sequential)]");
@@ -556,7 +562,8 @@ public const string {LIB_NAME_DEF} = "wgpu_native";
                 strBuild.AppendLine();
                 WriteNextInChain(strBuild);
                 strBuild.AppendLine();
-                strBuild.AppendLine("public WGPUCallbackMode CallBackMode;");
+                if (immediateCallBack is false)
+                    strBuild.AppendLine("public WGPUCallbackMode CallBackMode;");
                 strBuild.AppendLine();
 
                 var callBackFullArg = callBack.Arguments.Concat(new WebGPUJson.WebGPUJsonParameterType[]{
@@ -586,6 +593,7 @@ public const string {LIB_NAME_DEF} = "wgpu_native";
                 strBuild.AppendLine("}");
 
                 strBuild.AppendLine();
+
                 //}
                 //{
 
@@ -623,7 +631,9 @@ public const string {LIB_NAME_DEF} = "wgpu_native";
                 strBuild.AppendLine($"i.CallBack({string.Join(",", callBack.Arguments.Select(a => a.Name))});");
                 strBuild.AppendLine("}");
                 strBuild.AppendLine("finally{");
-                strBuild.AppendLine("gcHandle.Free();");
+                if (callBack.Name is not "uncaptured_error")
+                    strBuild.AppendLine("gcHandle.Free();");
+                // else 解放を行わない、端的にいうと何度でも呼び出せる特別扱い。
                 strBuild.AppendLine("}");
                 strBuild.AppendLine("}");
                 strBuild.AppendLine();

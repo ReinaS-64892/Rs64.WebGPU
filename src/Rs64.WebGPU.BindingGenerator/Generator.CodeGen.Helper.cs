@@ -63,8 +63,7 @@ namespace Rs64.WebGPU.FFI;
     const string WP_C_VOID_WL_SURFACE = "c_void_wl_surface";
     const string WP_C_VOID_X11_DISPLAY = "c_void_x11_display";
     const string WP_C_VOID_XCB_CONNECTION = "c_void_xcb_connection";
-
-
+    const string WGPU_FUTURE = "WGPUFuture";
     static string TypeNameTranslate(string typeID)
     {
         if (IsArray(typeID))
