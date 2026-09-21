@@ -88,48 +88,51 @@ public class WebGpuInstanceDescriptor
         public bool ShaderSourceSpirv = false;
 
         public bool MultipleDevicesPerAdapter = false;
+
+
+        internal FFI.WGPUInstanceFeatureName[] CreateFeatureNameArray()
+        {
+            var enableFutureCount = new bool[]
+            {
+                TimedWaitAny,
+                ShaderSourceSpirv,
+                MultipleDevicesPerAdapter,
+            }.Count(d => d);
+            var futuresArray = new FFI.WGPUInstanceFeatureName[enableFutureCount];
+
+            var i = 0;
+            if (TimedWaitAny)
+            {
+                futuresArray[i] = FFI.WGPUInstanceFeatureName.TimedWaitAny;
+                i += 1;
+            }
+
+            if (ShaderSourceSpirv)
+            {
+                futuresArray[i] = FFI.WGPUInstanceFeatureName.ShaderSourceSpirv;
+                i += 1;
+            }
+
+            if (MultipleDevicesPerAdapter)
+            {
+                futuresArray[i] = FFI.WGPUInstanceFeatureName.MultipleDevicesPerAdapter;
+                i += 1;
+            }
+            return futuresArray;
+        }
     }
     public Limit RequiredLimit = new();
     public class Limit
     {
         public nuint TimedWaitAnyMaxCount = 0;
+
+        internal FFI.WGPUInstanceLimits CreateLimit()
+        {
+            var limit = new FFI.WGPUInstanceLimits();
+            limit.TimedWaitAnyMaxCount = TimedWaitAnyMaxCount;
+            return limit;
+        }
     }
 
 
-    internal FFI.WGPUInstanceFeatureName[] CreateFeatureNameArray()
-    {
-        var enableFutureCount = new bool[]
-        {
-            RequiredFeature.TimedWaitAny,
-            RequiredFeature.ShaderSourceSpirv,
-            RequiredFeature.MultipleDevicesPerAdapter,
-        }.Count(d => d);
-        var futuresArray = new FFI.WGPUInstanceFeatureName[enableFutureCount];
-
-        var i = 0;
-        if (RequiredFeature.TimedWaitAny)
-        {
-            futuresArray[i] = FFI.WGPUInstanceFeatureName.TimedWaitAny;
-            i += 1;
-        }
-
-        if (RequiredFeature.ShaderSourceSpirv)
-        {
-            futuresArray[i] = FFI.WGPUInstanceFeatureName.ShaderSourceSpirv;
-            i += 1;
-        }
-
-        if (RequiredFeature.MultipleDevicesPerAdapter)
-        {
-            futuresArray[i] = FFI.WGPUInstanceFeatureName.MultipleDevicesPerAdapter;
-            i += 1;
-        }
-        return futuresArray;
-    }
-    internal FFI.WGPUInstanceLimits CreateLimit()
-    {
-        var limit = new FFI.WGPUInstanceLimits();
-        limit.TimedWaitAnyMaxCount = RequiredLimit.TimedWaitAnyMaxCount;
-        return limit;
-    }
 }

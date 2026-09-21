@@ -100,21 +100,18 @@ public class Class1
 
             // var instanceDesc = new FFI.WGPUInstanceDescriptor();
 
+            // WebGpu.GetInstanceDescriptor();
+            // WebGpu.HasAllInstanceFeature(new WebGpuInstanceDescriptor.Feature() { ShaderSourceSpirv = true, });
+
             using var instance = WebGpu.CreateInstance();
             Console.WriteLine("call WebGpu.CreateInstance");
 
 
             // var option = new FFI.WGPURequestAdapterOptions();
 
-            var adapterRequest = instance.RequestAdapter();
+            using var adapter = await instance.RequestAdapter();
             Console.WriteLine("call instance.RequestAdapter");
-            
-            // instance.InstanceProcessEvents();
 
-            using var adapter = await adapterRequest;
-
-            // var adapter = CallbackReceiver.s_adapter;
-            // CallbackReceiver.s_adapter = null;
 
             // FFI.WGPUAdapterInfo wGPUAdapterInfo = default;
             // var adapterInfoGetResult = FFI.WGPUAdapter.wgpuAdapterGetInfo(adapter, &wGPUAdapterInfo);

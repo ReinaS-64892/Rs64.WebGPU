@@ -2,45 +2,39 @@
 // SPDX-License-Identifier: MPL-2.0
 
 using System;
+using System.Linq;
 
 namespace Rs64.WebGPU;
 
 public partial class WebGpu
 {
-    public static WebGPUInstance CreateInstance()
+    public static WebGPUInstance CreateInstance(WebGpuInstanceDescriptor? descriptor = null)
     {
-        unsafe
+        if (descriptor is null)
         {
-            return new(new(FFI.Webgpu.wgpuCreateInstance(null)));
+            unsafe { return new(new(FFI.Webgpu.wgpuCreateInstance(null))); }
         }
-    }
-    public static WebGPUInstance CreateInstance(WebGpuInstanceDescriptor descriptor)
-    {
-        throw new WgpuNativeUnimplementedException();
-#pragma warning disable CS0162 // Unreachable code detected
-        var features = descriptor.CreateFeatureNameArray();
-        var limits = descriptor.CreateLimit();
+
+        var features = descriptor.RequiredFeature.CreateFeatureNameArray();
+        var limits = descriptor.RequiredLimit.CreateLimit();
         unsafe
         {
             fixed (FFI.WGPUInstanceFeatureName* featuresPtr = features)
             {
-                var desc = new FFI.WGPUInstanceDescriptor();
-
-                desc.RequiredFeaturesCount = (nuint)features.Length;
-                desc.RequiredFeatures = featuresPtr;
-
-                desc.RequiredLimits = &limits;
+                var desc = new FFI.WGPUInstanceDescriptor
+                {
+                    RequiredFeaturesCount = (nuint)features.Length,
+                    RequiredFeatures = featuresPtr,
+                    RequiredLimits = &limits
+                };
 
                 return new(new(FFI.Webgpu.wgpuCreateInstance(&desc)));
             }
         }
-#pragma warning restore CS0162 // Unreachable code detected
     }
 
     public static WebGpuInstanceDescriptor GetInstanceDescriptor()
     {
-        throw new WgpuNativeUnimplementedException();
-#pragma warning disable CS0162 // Unreachable code detected
         var f = new WebGpuInstanceDescriptor.Feature();
         unsafe
         {
@@ -72,7 +66,13 @@ public partial class WebGpu
             FFI.Webgpu.wgpuGetInstanceLimits(&instanceLimits);
             l.TimedWaitAnyMaxCount = instanceLimits.TimedWaitAnyMaxCount;
         }
-
-#pragma warning restore CS0162 // Unreachable code detected
+        return new() { RequiredFeature = f, RequiredLimit = l };
     }
+
+    public static bool HasAllInstanceFeature(WebGpuInstanceDescriptor.Feature feature)
+    {
+        var nameArray = feature.CreateFeatureNameArray();
+        return nameArray.Select(FFI.Webgpu.wgpuHasInstanceFeature).Select(wb => (bool)wb).All(b => b);
+    }
+
 }
