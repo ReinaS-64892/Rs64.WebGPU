@@ -6,6 +6,7 @@ public static partial class Generator
 {
     const string WEBGPU_H_PATH = "../../lib/webgpu-headers/webgpu.json";
     const string OUTPUT_PATH = "../Rs64.WebGPU.FFI/GeneratedCode";
+    const string OUTPUT_PATH_SAFE_API = "../Rs64.WebGPU/GeneratedCode";
     const string WGPU = "wgpu";
     const string WGPU_UP = "WGPU";
     const string FN_WGPU = "FnWgpu";
@@ -22,6 +23,8 @@ public static partial class Generator
 
         if (Directory.Exists(OUTPUT_PATH)) { Directory.Delete(OUTPUT_PATH, true); }
         Directory.CreateDirectory(OUTPUT_PATH);
+        if (Directory.Exists(OUTPUT_PATH_SAFE_API)) { Directory.Delete(OUTPUT_PATH_SAFE_API, true); }
+        Directory.CreateDirectory(OUTPUT_PATH_SAFE_API);
         await Task.Delay(1000);
 
 
@@ -51,6 +54,12 @@ public static partial class Generator
         )
         {
             File.WriteAllText(Path.Combine(OUTPUT_PATH, dec.filename), dec.contents);
+        }
+
+        foreach(var dec in SafeWrapper(webGPUJson))
+        {
+            
+            File.WriteAllText(Path.Combine(OUTPUT_PATH_SAFE_API, dec.filename), dec.contents);
         }
     }
 

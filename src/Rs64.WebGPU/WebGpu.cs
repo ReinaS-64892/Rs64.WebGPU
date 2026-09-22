@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: MPL-2.0
 
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
@@ -17,7 +18,7 @@ public partial class WebGpu
             unsafe { return new(new(FFI.Webgpu.wgpuCreateInstance(null))); }
         }
 
-        var features = descriptor.RequiredFeature.CreateFeatureNameArray();
+        var features = descriptor.ConvertToFFIRequiredFeature();
         var limits = descriptor.RequiredLimit.CreateLimit();
         unsafe
         {
@@ -37,44 +38,38 @@ public partial class WebGpu
 
     public static WebGpuInstanceDescriptor GetInstanceDescriptor()
     {
-        var f = new WebGpuInstanceDescriptor.Feature();
+        var id = new WebGpuInstanceDescriptor();
         unsafe
         {
-            FFI.WGPUSupportedInstanceFeatures supportedInstanceFeatures;
-            FFI.Webgpu.wgpuGetInstanceFeatures(&supportedInstanceFeatures);
-            var names = new ReadOnlySpan<FFI.WGPUInstanceFeatureName>(supportedInstanceFeatures.Features, (int)supportedInstanceFeatures.FeaturesCount);
+            FFI.WGPUSupportedInstanceFeatures ffiFeatures;
+            FFI.Webgpu.wgpuGetInstanceFeatures(&ffiFeatures);
+            var names = new ReadOnlySpan<FFI.WGPUInstanceFeatureName>(ffiFeatures.Features, (int)ffiFeatures.FeaturesCount);
             foreach (var name in names)
             {
-                switch (name)
-                {
-                    default: break;
-                    case FFI.WGPUInstanceFeatureName.TimedWaitAny:
-                        f.TimedWaitAny = true;
-                        break;
-                    case FFI.WGPUInstanceFeatureName.ShaderSourceSpirv:
-                        f.ShaderSourceSpirv = true;
-                        break;
-                    case FFI.WGPUInstanceFeatureName.MultipleDevicesPerAdapter:
-                        f.MultipleDevicesPerAdapter = true;
-                        break;
-                }
+                id.RequiredFeatures.Add(name.ToW());
             }
-            FFI.WGPUSupportedInstanceFeatures.FreeMembers(ref supportedInstanceFeatures);
+            FFI.WGPUSupportedInstanceFeatures.FreeMembers(ref ffiFeatures);
         }
-        var l = new WebGpuInstanceDescriptor.Limit();
         unsafe
         {
+            var l = new WebGPUInstanceLimits();
+            id.RequiredLimit = l;
+
             FFI.WGPUInstanceLimits instanceLimits;
             FFI.Webgpu.wgpuGetInstanceLimits(&instanceLimits);
             l.TimedWaitAnyMaxCount = instanceLimits.TimedWaitAnyMaxCount;
         }
-        return new() { RequiredFeature = f, RequiredLimit = l };
+        return id;
     }
 
-    public static bool HasAllInstanceFeature(WebGpuInstanceDescriptor.Feature feature)
+    public static bool HasInstanceFeature(WebGPUInstanceFeatureName feature)
     {
-        var nameArray = feature.CreateFeatureNameArray();
-        return nameArray.Select(FFI.Webgpu.wgpuHasInstanceFeature).Select(wb => (bool)wb).All(b => b);
+        return (bool)FFI.Webgpu.wgpuHasInstanceFeature(feature.ToF());
+    }
+
+    public static bool HasAllInstanceFeature(HashSet<WebGPUInstanceFeatureName> features)
+    {
+        return features.All(HasInstanceFeature);
     }
 
 }
@@ -94,7 +89,7 @@ internal unsafe ref struct StackAllocAsFFIArea(Span<byte> bytes)
     {
         var allocateSize = sizeof(T);
         if (_length < (_stackCount + allocateSize)) { throw new StackAreaOverflowException(); }
-        
+
         var targetPtr = _ptr + _stackCount;
 
         for (var i = 0; allocateSize > i; i += 1) { targetPtr[i] = 0; }

@@ -42,12 +42,23 @@ internal unsafe ref struct WGPUStringView
         StringData = ptr;
         Length = (nuint)length;
     }
+    public WGPUStringView(byte* ptr, nuint length) : this()
+    {
+        StringData = ptr;
+        Length = length;
+    }
     public static WGPUStringView Null => new() { StringData = null, Length = Webgpu.WGPU_STRLEN };
     public static WGPUStringView Empty => new() { StringData = null, Length = 0 };
 
-    internal static Span<byte> ConvertSpan(string? label)
+    internal static Span<byte> ConvertWGPUStringParts(string? dotnetString, out nuint length)
     {
-        if (label is null) { return Span<byte>.Empty; }
-        return Encoding.UTF8.GetBytes(label);
+        if (dotnetString is null)
+        {
+            length = Webgpu.WGPU_STRLEN;
+            return null;
+        }
+        var managedArray = Encoding.UTF8.GetBytes(dotnetString);
+        length = (nuint)managedArray.Length;
+        return managedArray;
     }
 }

@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: MPL-2.0
 
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Threading.Tasks;
@@ -16,7 +17,38 @@ public class WebGPUInstance : IDisposable
 
 
 
-    public Task<WebGPUAdapter> RequestAdapter()
+    public HashSet<WebGPUWgslLanguageFeatureName> GetWgslLanguageFeatures()
+    {
+        unsafe
+        {
+            FFI.WGPUSupportedWgslLanguageFeatures lf = default;
+            FFI.WGPUInstance.wgpuInstanceGetWgslLanguageFeatures(Native.GetPtr(), &lf);
+
+            var lnfSpan = new Span<FFI.WGPUWgslLanguageFeatureName>(lf.Features, (int)lf.FeaturesCount);
+            var wgslLanguageFeatureNames = lnfSpan.ToArray().Select(WebGPUWgslLanguageFeatureNameUtil.ToW).ToHashSet();
+
+            FFI.WGPUSupportedWgslLanguageFeatures.FreeMembers(ref lf);
+
+            return wgslLanguageFeatureNames;
+        }
+    }
+    public bool HasWgslLanguageFeature(WebGPUWgslLanguageFeatureName languageFeatureName)
+    {
+        unsafe
+        {
+            return (bool)FFI.WGPUInstance.wgpuInstanceHasWgslLanguageFeature(Native.GetPtr(), languageFeatureName.ToF());
+        }
+    }
+    public bool HasAllWgslLanguageFeature(HashSet<WebGPUWgslLanguageFeatureName> languageFeatureNames)
+    {
+        return languageFeatureNames.All(HasWgslLanguageFeature);
+    }
+    internal void InstanceProcessEvents()
+    {
+        unsafe { FFI.WGPUInstance.wgpuInstanceProcessEvents(Native.GetPtr()); }
+    }
+
+    public Task<WebGPUAdapter> RequestAdapter(WebGPURequestAdapterOptions? requestAdapterOptions = null)
     {
         var callBack = new RequestAdapterCallBack(new TaskCompletionSource<WebGPUAdapter>());
         unsafe
@@ -68,23 +100,16 @@ public class WebGPUInstance : IDisposable
         }
     }
 
-    internal void InstanceProcessEvents()
-    {
-        unsafe { FFI.WGPUInstance.wgpuInstanceProcessEvents(Native.GetPtr()); }
-    }
-
-
-    internal void CreateSurface(WebGPUSurfaceDescriptor webGPUSurfaceDescriptor)
+    public void CreateSurface(WebGPUSurfaceDescriptor webGPUSurfaceDescriptor)
     {
         unsafe
         {
             var stack = new StackAllocAsFFIArea(stackalloc byte[256]);
             FFI.WGPUSurfaceDescriptor surfaceDescriptor = new();
 
-            var labelSpan = FFI.WGPUStringView.ConvertSpan(webGPUSurfaceDescriptor.Label);
-            fixed (byte* ptr = labelSpan)
+            fixed (byte* ptr = FFI.WGPUStringView.ConvertWGPUStringParts(webGPUSurfaceDescriptor.Label, out var strLen))
             {
-                surfaceDescriptor.Label = new(ptr, labelSpan.Length);
+                surfaceDescriptor.Label = new(ptr, strLen);
                 surfaceDescriptor.NextInChain = (FFI.WGPUChainedStruct*)Unsafe.AsPointer(ref webGPUSurfaceDescriptor.GetExtensionSurfaceSource(stack));
 
                 var surface = FFI.WGPUInstance.wgpuInstanceCreateSurface(Native.GetPtr(), &surfaceDescriptor);
@@ -92,66 +117,44 @@ public class WebGPUInstance : IDisposable
         }
     }
 
+    internal void InstanceWaitAny()
+    {
+        unsafe
+        {
+            nuint length = 0;
+            var features = stackalloc FFI.WGPUFutureWaitInfo[(int)length];
+            var timeout_nanosecond = 0ul;
+            FFI.WGPUInstance.wgpuInstanceWaitAny(Native.GetPtr(), length, features, timeout_nanosecond);
+        }
+
+    }
 
 
 
 }
 
+public class WebGPURequestAdapterOptions
+{
+}
+
 public class WebGpuInstanceDescriptor
 {
-    public Feature RequiredFeature = new();
-    public class Feature
+    public HashSet<WebGPUInstanceFeatureName> RequiredFeatures = [];
+    public WebGPUInstanceLimits RequiredLimit = new();
+    internal FFI.WGPUInstanceFeatureName[] ConvertToFFIRequiredFeature() { return ConvertToFFIRequiredFeature(RequiredFeatures); }
+    internal static FFI.WGPUInstanceFeatureName[] ConvertToFFIRequiredFeature(HashSet<WebGPUInstanceFeatureName> featureNames)
     {
-        public bool TimedWaitAny = false;
-
-        public bool ShaderSourceSpirv = false;
-
-        public bool MultipleDevicesPerAdapter = false;
-
-
-        internal FFI.WGPUInstanceFeatureName[] CreateFeatureNameArray()
-        {
-            var enableFutureCount = new bool[]
-            {
-                TimedWaitAny,
-                ShaderSourceSpirv,
-                MultipleDevicesPerAdapter,
-            }.Count(d => d);
-            var futuresArray = new FFI.WGPUInstanceFeatureName[enableFutureCount];
-
-            var i = 0;
-            if (TimedWaitAny)
-            {
-                futuresArray[i] = FFI.WGPUInstanceFeatureName.TimedWaitAny;
-                i += 1;
-            }
-
-            if (ShaderSourceSpirv)
-            {
-                futuresArray[i] = FFI.WGPUInstanceFeatureName.ShaderSourceSpirv;
-                i += 1;
-            }
-
-            if (MultipleDevicesPerAdapter)
-            {
-                futuresArray[i] = FFI.WGPUInstanceFeatureName.MultipleDevicesPerAdapter;
-                i += 1;
-            }
-            return futuresArray;
-        }
+        return featureNames.Select(WebGPUInstanceFeatureNameUtil.ToF).ToArray();
     }
-    public Limit RequiredLimit = new();
-    public class Limit
+}
+public class WebGPUInstanceLimits
+{
+    public nuint TimedWaitAnyMaxCount = 0;
+
+    internal FFI.WGPUInstanceLimits CreateLimit()
     {
-        public nuint TimedWaitAnyMaxCount = 0;
-
-        internal FFI.WGPUInstanceLimits CreateLimit()
-        {
-            var limit = new FFI.WGPUInstanceLimits();
-            limit.TimedWaitAnyMaxCount = TimedWaitAnyMaxCount;
-            return limit;
-        }
+        var limit = new FFI.WGPUInstanceLimits();
+        limit.TimedWaitAnyMaxCount = TimedWaitAnyMaxCount;
+        return limit;
     }
-
-
 }

@@ -654,4 +654,81 @@ public const string {LIB_NAME_DEF} = "wgpu_native";
         }
     }
 
+
+    private static IEnumerable<(string filename, string contents)> SafeWrapper(WebGPUJson webGPUJson)
+    {
+        foreach (var enumDef in webGPUJson.Enums)
+        {
+            switch (enumDef.Name)
+            {
+                default: break;
+                case "instance_feature_name":
+                case "WGSL_language_feature_name":
+                    {
+                        var strBuild = new StringBuilder();
+                        var typeName = "WebGPU" + enumDef.Name.ToPascalCase();
+                        var ffiTypeName = "FFI." + WGPU_UP + enumDef.Name.ToPascalCase();
+                        strBuild.AppendLine(
+"""
+// this code is generated 
+// do not edit
+namespace Rs64.WebGPU;
+"""
+                        );
+
+                        strBuild.AppendLine("public enum " + typeName);
+                        strBuild.AppendLine("{");
+                        foreach (var e in enumDef.Entries)
+                        {
+                            if (e is null) { continue; }
+
+                            WriteDocument(strBuild, e.Document);
+                            strBuild.AppendLine(TranslateEnumEntryName(e.Name) + ",");
+                        }
+                        strBuild.AppendLine("}");
+
+                        strBuild.AppendLine($"internal static class {typeName}Util");
+                        strBuild.AppendLine("{");
+
+                        strBuild.AppendLine($"public static {ffiTypeName} ToF(this {typeName} val)");
+                        strBuild.AppendLine("{");
+
+                        strBuild.AppendLine("switch (val)");
+                        strBuild.AppendLine("{");
+                        strBuild.AppendLine("default: throw new InvalidEnumValueException ();");
+                        foreach (var e in enumDef.Entries)
+                        {
+                            if (e is null) { continue; }
+                            var enumEntryName = TranslateEnumEntryName(e.Name);
+                            strBuild.AppendLine($"case {typeName}.{enumEntryName}: return {ffiTypeName}.{enumEntryName};");
+                        }
+                        strBuild.AppendLine("}");
+
+                        strBuild.AppendLine("}");
+
+                        strBuild.AppendLine($"public static {typeName} ToW(this {ffiTypeName} val)");
+                        strBuild.AppendLine("{");
+
+                        strBuild.AppendLine("switch (val)");
+                        strBuild.AppendLine("{");
+                        strBuild.AppendLine("default: throw new InvalidEnumValueException ();");
+                        foreach (var e in enumDef.Entries)
+                        {
+                            if (e is null) { continue; }
+                            var enumEntryName = TranslateEnumEntryName(e.Name);
+                            strBuild.AppendLine($"case {ffiTypeName}.{enumEntryName}: return {typeName}.{enumEntryName};");
+                        }
+                        strBuild.AppendLine("}");
+
+                        strBuild.AppendLine("}");
+
+                        strBuild.AppendLine("}");
+
+                        yield return (typeName + ".cs", strBuild.ToString());
+                        break;
+                    }
+            }
+        }
+    }
+
 }

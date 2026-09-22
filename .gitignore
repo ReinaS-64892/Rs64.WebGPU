@@ -1,3 +1,4 @@
 **/artifact
 src/Rs64.WebGPU.FFI/GeneratedCode
+src/Rs64.WebGPU/GeneratedCode
 .vscode
