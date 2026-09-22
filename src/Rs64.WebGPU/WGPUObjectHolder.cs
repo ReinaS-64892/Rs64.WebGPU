@@ -3,27 +3,28 @@
 
 using System;
 using System.Runtime.InteropServices;
+using System.Threading;
 
 namespace Rs64.WebGPU;
 
 internal unsafe class WGPUObjectHolder<TWGPUObject> : IDisposable
 where TWGPUObject : unmanaged, FFI.IWGPUObject<TWGPUObject>
 {
-    TWGPUObject* _ptr = null;
+    IntPtr _ptr = IntPtr.Zero;
     public WGPUObjectHolder(TWGPUObject* ptr)
     {
-        _ptr = ptr;
+        _ptr = (nint)ptr;
     }
 
     public TWGPUObject* GetPtr()
     {
-        if (_ptr is null) { throw new ObjectUseAfterFreeException(); }
-        return _ptr;
+        if (_ptr == IntPtr.Zero) { throw new ObjectUseAfterFreeException(); }
+        return (TWGPUObject*)_ptr;
     }
     public bool TryGet(out TWGPUObject* ptr)
     {
-        if (_ptr is null) { ptr = null; return false; }
-        ptr = _ptr;
+        if (_ptr == IntPtr.Zero) { ptr = null; return false; }
+        ptr = (TWGPUObject*)_ptr;
         return true;
     }
 
@@ -36,10 +37,9 @@ where TWGPUObject : unmanaged, FFI.IWGPUObject<TWGPUObject>
 
     public void Dispose()
     {
-        if (_ptr is null) { return; }
-        var ptr = _ptr;
-        _ptr = null;
-        TWGPUObject.Release(ptr);
+        var ptr = Interlocked.Exchange<IntPtr>(ref _ptr, IntPtr.Zero);
+        if (ptr == IntPtr.Zero) { return; }
+        TWGPUObject.Release((TWGPUObject*)ptr);
         GC.SuppressFinalize(this);
     }
 

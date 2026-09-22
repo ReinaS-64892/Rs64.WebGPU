@@ -664,6 +664,14 @@ public const string {LIB_NAME_DEF} = "wgpu_native";
                 default: break;
                 case "instance_feature_name":
                 case "WGSL_language_feature_name":
+                case "feature_level":
+                case "power_preference":
+                case "backend_type":
+                case "texture_format":
+                case "composite_alpha_mode":
+                case "present_mode":
+                case "surface_get_current_texture_status":
+                case "status":
                     {
                         var strBuild = new StringBuilder();
                         var typeName = "WebGPU" + enumDef.Name.ToPascalCase();
@@ -678,7 +686,92 @@ namespace Rs64.WebGPU;
 
                         strBuild.AppendLine("public enum " + typeName);
                         strBuild.AppendLine("{");
+                        bool haveUndefined = false;
                         foreach (var e in enumDef.Entries)
+                        {
+                            if (e is null) { continue; }
+                            if (e.Name is "undefined") { haveUndefined = true; continue; }
+
+                            WriteDocument(strBuild, e.Document);
+                            strBuild.AppendLine(TranslateEnumEntryName(e.Name) + ",");
+                        }
+                        strBuild.AppendLine("}");
+
+                        strBuild.AppendLine($"internal static class {typeName}Util");
+                        strBuild.AppendLine("{");
+
+                        strBuild.AppendLine($"public static {ffiTypeName} ToF(this {typeName}{(haveUndefined ? "?" : "")} val)");
+                        strBuild.AppendLine("{");
+
+                        strBuild.AppendLine("switch (val)");
+                        strBuild.AppendLine("{");
+                        strBuild.AppendLine("default: throw new InvalidEnumValueException ();");
+                        foreach (var e in enumDef.Entries)
+                        {
+                            if (e is null) { continue; }
+
+                            var enumEntryName = TranslateEnumEntryName(e.Name);
+                            var ffiEntryEnumLiteral = ffiTypeName + "." + enumEntryName;
+                            var EntryEnumLiteral = typeName + "." + enumEntryName;
+                            if (e.Name is "undefined") { EntryEnumLiteral = "null"; }
+                            strBuild.AppendLine($"case {EntryEnumLiteral}: return {ffiEntryEnumLiteral};");
+                        }
+                        strBuild.AppendLine("}");
+
+                        strBuild.AppendLine("}");
+
+                        strBuild.AppendLine($"public static {typeName}{(haveUndefined ? "?" : "")} ToW(this {ffiTypeName} val)");
+                        strBuild.AppendLine("{");
+
+                        strBuild.AppendLine("switch (val)");
+                        strBuild.AppendLine("{");
+                        strBuild.AppendLine("default: throw new InvalidEnumValueException ();");
+                        foreach (var e in enumDef.Entries)
+                        {
+                            if (e is null) { continue; }
+
+                            var enumEntryName = TranslateEnumEntryName(e.Name);
+                            var ffiEntryEnumLiteral = ffiTypeName + "." + enumEntryName;
+                            var EntryEnumLiteral = typeName + "." + enumEntryName;
+                            if (e.Name is "undefined") { EntryEnumLiteral = "null"; }
+                            strBuild.AppendLine($"case {ffiEntryEnumLiteral}: return {EntryEnumLiteral};");
+                        }
+                        strBuild.AppendLine("}");
+
+                        strBuild.AppendLine("}");
+
+                        strBuild.AppendLine("}");
+
+                        yield return (typeName + ".cs", strBuild.ToString());
+                        break;
+                    }
+            }
+        }
+
+        foreach (var bitFlagDef in webGPUJson.BitFlags)
+        {
+            switch (bitFlagDef.Name)
+            {
+                default: break;
+                case "texture_usage":
+                    {
+                        var strBuild = new StringBuilder();
+
+                        var typeName = "WebGPU" + bitFlagDef.Name.ToPascalCase();
+                        var ffiTypeName = "FFI." + WGPU_UP + bitFlagDef.Name.ToPascalCase();
+                        strBuild.AppendLine(
+"""
+// this code is generated 
+// do not edit
+namespace Rs64.WebGPU;
+using System;
+"""
+                        );
+
+                        strBuild.AppendLine("[Flags]");
+                        strBuild.AppendLine("public enum " + typeName);
+                        strBuild.AppendLine("{");
+                        foreach (var e in bitFlagDef.Entries)
                         {
                             if (e is null) { continue; }
 
@@ -692,34 +785,43 @@ namespace Rs64.WebGPU;
 
                         strBuild.AppendLine($"public static {ffiTypeName} ToF(this {typeName} val)");
                         strBuild.AppendLine("{");
+                        strBuild.AppendLine($"var ffiVal = default({ffiTypeName});");
 
-                        strBuild.AppendLine("switch (val)");
-                        strBuild.AppendLine("{");
-                        strBuild.AppendLine("default: throw new InvalidEnumValueException ();");
-                        foreach (var e in enumDef.Entries)
+                        foreach (var e in bitFlagDef.Entries)
                         {
                             if (e is null) { continue; }
-                            var enumEntryName = TranslateEnumEntryName(e.Name);
-                            strBuild.AppendLine($"case {typeName}.{enumEntryName}: return {ffiTypeName}.{enumEntryName};");
-                        }
-                        strBuild.AppendLine("}");
 
+                            var enumEntryName = TranslateEnumEntryName(e.Name);
+                            var ffiEntryEnumLiteral = ffiTypeName + "." + enumEntryName;
+                            var EntryEnumLiteral = typeName + "." + enumEntryName;
+                            strBuild.AppendLine($"if (val.HasFlag({EntryEnumLiteral}))");
+                            strBuild.AppendLine("{");
+                            strBuild.AppendLine($"ffiVal |= {ffiEntryEnumLiteral};");
+                            strBuild.AppendLine("}");
+                        }
+
+                        strBuild.AppendLine($"return ffiVal;");
                         strBuild.AppendLine("}");
 
                         strBuild.AppendLine($"public static {typeName} ToW(this {ffiTypeName} val)");
                         strBuild.AppendLine("{");
 
-                        strBuild.AppendLine("switch (val)");
-                        strBuild.AppendLine("{");
-                        strBuild.AppendLine("default: throw new InvalidEnumValueException ();");
-                        foreach (var e in enumDef.Entries)
+                        strBuild.AppendLine($"var wVal = default({typeName});");
+
+                        foreach (var e in bitFlagDef.Entries)
                         {
                             if (e is null) { continue; }
-                            var enumEntryName = TranslateEnumEntryName(e.Name);
-                            strBuild.AppendLine($"case {ffiTypeName}.{enumEntryName}: return {typeName}.{enumEntryName};");
-                        }
-                        strBuild.AppendLine("}");
 
+                            var enumEntryName = TranslateEnumEntryName(e.Name);
+                            var ffiEntryEnumLiteral = ffiTypeName + "." + enumEntryName;
+                            var EntryEnumLiteral = typeName + "." + enumEntryName;
+                            strBuild.AppendLine($"if (val.HasFlag({ffiEntryEnumLiteral}))");
+                            strBuild.AppendLine("{");
+                            strBuild.AppendLine($"wVal |= {EntryEnumLiteral};");
+                            strBuild.AppendLine("}");
+                        }
+
+                        strBuild.AppendLine($"return wVal;");
                         strBuild.AppendLine("}");
 
                         strBuild.AppendLine("}");

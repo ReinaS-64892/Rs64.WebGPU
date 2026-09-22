@@ -11,8 +11,8 @@ namespace Rs64.WebGPU;
 
 public class WebGPUInstance : IDisposable
 {
-    private WGPUObjectHolder<FFI.WGPUInstance> Native { get; }
-    internal WebGPUInstance(WGPUObjectHolder<FFI.WGPUInstance> instanceHolder) { Native = instanceHolder; }
+    internal WGPUObjectHolder<FFI.WGPUInstance> Native { get; }
+    internal WebGPUInstance(WGPUObjectHolder<FFI.WGPUInstance> holder) { Native = holder; }
     public void Dispose() { Native.Dispose(); }
 
 
@@ -59,7 +59,21 @@ public class WebGPUInstance : IDisposable
                 WGPURequestAdapterCallback = &FFI.WGPURequestAdapterCallbackManagedWrapper.CallBack,
                 UserData1 = FFI.WGPURequestAdapterCallbackManagedWrapper.CreateUserData(callBack)
             };
-            FFI.WGPUInstance.wgpuInstanceRequestAdapter(Native.GetPtr(), null, ffiCallBack);
+            FFI.WGPURequestAdapterOptions* adapterOptionPtr;
+            FFI.WGPURequestAdapterOptions adapterOption;
+            if (requestAdapterOptions is null) { adapterOptionPtr = null; }
+            else
+            {
+                adapterOptionPtr = &adapterOption;
+
+                adapterOption.FeatureLevel = requestAdapterOptions.FeatureLevel.ToF();
+                adapterOption.PowerPreference = requestAdapterOptions.PowerPreference.ToF();
+                adapterOption.ForceFallbackAdapter = (FFI.WGPUBool)requestAdapterOptions.ForceFallbackAdapter;
+                adapterOption.BackendType = requestAdapterOptions.BackendType.ToF();
+                adapterOption.CompatibleSurface = requestAdapterOptions.CompatibleSurface?.Native?.GetPtr();
+            }
+
+            FFI.WGPUInstance.wgpuInstanceRequestAdapter(Native.GetPtr(), adapterOptionPtr, ffiCallBack);
         }
         return callBack.Task.Task;
     }
@@ -100,11 +114,11 @@ public class WebGPUInstance : IDisposable
         }
     }
 
-    public void CreateSurface(WebGPUSurfaceDescriptor webGPUSurfaceDescriptor)
+    public WebGPUSurface CreateSurface(WebGPUSurfaceDescriptor webGPUSurfaceDescriptor)
     {
         unsafe
         {
-            var stack = new StackAllocAsFFIArea(stackalloc byte[256]);
+            var stack = new StackAllocAsFFIArea(stackalloc byte[128]);
             FFI.WGPUSurfaceDescriptor surfaceDescriptor = new();
 
             fixed (byte* ptr = FFI.WGPUStringView.ConvertWGPUStringParts(webGPUSurfaceDescriptor.Label, out var strLen))
@@ -112,7 +126,7 @@ public class WebGPUInstance : IDisposable
                 surfaceDescriptor.Label = new(ptr, strLen);
                 surfaceDescriptor.NextInChain = (FFI.WGPUChainedStruct*)Unsafe.AsPointer(ref webGPUSurfaceDescriptor.GetExtensionSurfaceSource(stack));
 
-                var surface = FFI.WGPUInstance.wgpuInstanceCreateSurface(Native.GetPtr(), &surfaceDescriptor);
+                return new(new(FFI.WGPUInstance.wgpuInstanceCreateSurface(Native.GetPtr(), &surfaceDescriptor)));
             }
         }
     }
@@ -129,32 +143,4 @@ public class WebGPUInstance : IDisposable
 
     }
 
-
-
-}
-
-public class WebGPURequestAdapterOptions
-{
-}
-
-public class WebGpuInstanceDescriptor
-{
-    public HashSet<WebGPUInstanceFeatureName> RequiredFeatures = [];
-    public WebGPUInstanceLimits RequiredLimit = new();
-    internal FFI.WGPUInstanceFeatureName[] ConvertToFFIRequiredFeature() { return ConvertToFFIRequiredFeature(RequiredFeatures); }
-    internal static FFI.WGPUInstanceFeatureName[] ConvertToFFIRequiredFeature(HashSet<WebGPUInstanceFeatureName> featureNames)
-    {
-        return featureNames.Select(WebGPUInstanceFeatureNameUtil.ToF).ToArray();
-    }
-}
-public class WebGPUInstanceLimits
-{
-    public nuint TimedWaitAnyMaxCount = 0;
-
-    internal FFI.WGPUInstanceLimits CreateLimit()
-    {
-        var limit = new FFI.WGPUInstanceLimits();
-        limit.TimedWaitAnyMaxCount = TimedWaitAnyMaxCount;
-        return limit;
-    }
 }

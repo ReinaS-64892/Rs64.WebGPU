@@ -7,7 +7,12 @@ namespace Rs64.WebGPU;
 
 public class WebGPUAdapter : IDisposable
 {
-    private WGPUObjectHolder<FFI.WGPUAdapter> Native { get; }
-    internal WebGPUAdapter(WGPUObjectHolder<FFI.WGPUAdapter> instanceHolder) { Native = instanceHolder; }
+    internal WGPUObjectHolder<FFI.WGPUAdapter> Native { get; }
+    internal WebGPUAdapter(WGPUObjectHolder<FFI.WGPUAdapter> holder) { Native = holder; }
     public void Dispose() { Native.Dispose(); }
+
+
+
+
+
 }
