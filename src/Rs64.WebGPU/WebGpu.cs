@@ -7,6 +7,7 @@ using System.Linq;
 
 namespace Rs64.WebGPU;
 
+[FFINote(typeof(FFI.Webgpu))]
 public partial class WebGpu
 {
     public static WebGPUInstance CreateInstance(WebGpuInstanceDescriptor? descriptor = null)

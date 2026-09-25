@@ -3,6 +3,7 @@
 
 namespace Rs64.WebGPU;
 
+[FFINote(typeof(FFI.WGPURequestAdapterOptions))]
 public class WebGPURequestAdapterOptions
 {
     public WebGPUFeatureLevel? FeatureLevel;

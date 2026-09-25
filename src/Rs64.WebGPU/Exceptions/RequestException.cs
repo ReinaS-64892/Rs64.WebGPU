@@ -11,17 +11,3 @@ public class RequestAdapterUnavailableException : System.Exception
     public RequestAdapterUnavailableException(string message) : base(message) { }
     public RequestAdapterUnavailableException(string message, System.Exception inner) : base(message, inner) { }
 }
-[System.Serializable]
-public class RequestAdapterErrorException : System.Exception
-{
-    public RequestAdapterErrorException() { }
-    public RequestAdapterErrorException(string message) : base(message) { }
-    public RequestAdapterErrorException(string message, System.Exception inner) : base(message, inner) { }
-}
-[System.Serializable]
-public class RequestDeviceErrorException : System.Exception
-{
-    public RequestDeviceErrorException() { }
-    public RequestDeviceErrorException(string message) : base(message) { }
-    public RequestDeviceErrorException(string message, System.Exception inner) : base(message, inner) { }
-}

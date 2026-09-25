@@ -7,6 +7,7 @@ using System.Runtime.InteropServices;
 
 namespace Rs64.WebGPU;
 
+[FFINote(typeof(FFI.WGPUSurface))]
 public class WebGPUSurface : IDisposable
 {
     internal WGPUObjectHolder<FFI.WGPUSurface> Native { get; }
@@ -109,6 +110,7 @@ public class WebGPUSurface : IDisposable
     }
 }
 
+[FFINote(typeof(FFI.WGPUSurfaceCapabilities))]
 public class WebGPUSurfaceCapabilities
 {
     internal WebGPUSurfaceCapabilities() { }
@@ -118,6 +120,7 @@ public class WebGPUSurfaceCapabilities
     public WebGPUCompositeAlphaMode[] AlphaModes { get; internal set; } = [];
 }
 
+[FFINote(typeof(FFI.WGPUSurfaceConfiguration))]
 public class WebGPUSurfaceConfiguration
 {
     public required WebGPUDevice Device;
@@ -129,6 +132,7 @@ public class WebGPUSurfaceConfiguration
     public WebGPUCompositeAlphaMode AlphaMode = WebGPUCompositeAlphaMode.Auto;
     public WebGPUPresentMode? PresentMode;
 }
+[FFINote(typeof(FFI.WGPUSurfaceTexture))]
 public class WebGPUSurfaceTexture : IDisposable
 {
     internal WebGPUSurfaceTexture() { }
@@ -141,18 +145,10 @@ public class WebGPUSurfaceTexture : IDisposable
     }
 }
 
+[FFINote(typeof(FFI.WGPUTexture))]
 public class WebGPUTexture : IDisposable
 {
     internal WGPUObjectHolder<FFI.WGPUTexture> Native { get; }
     internal WebGPUTexture(WGPUObjectHolder<FFI.WGPUTexture> holder) { Native = holder; }
     public void Dispose() { Native.Dispose(); }
-}
-
-public class WebGPUDevice : IDisposable
-{
-    internal WGPUObjectHolder<FFI.WGPUDevice> Native { get; }
-    internal WebGPUDevice(WGPUObjectHolder<FFI.WGPUDevice> holder) { Native = holder; }
-    public void Dispose() { Native.Dispose(); }
-
-
 }

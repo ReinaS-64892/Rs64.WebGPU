@@ -6,6 +6,7 @@ using System.Runtime.InteropServices;
 
 namespace Rs64.WebGPU;
 
+[FFINote(typeof(FFI.WGPUStringView))]
 internal static class WebGPUStringUtil
 {
     public static string? ReadStringView(this FFI.WGPUStringView stringView)

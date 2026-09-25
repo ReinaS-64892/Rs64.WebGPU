@@ -674,6 +674,16 @@ public const string {LIB_NAME_DEF} = "wgpu_native";
                 case "status":
                 case "feature_name":
                 case "adapter_type":
+                case "buffer_binding_type":
+                case "sampler_binding_type":
+                case "texture_sample_type":
+                case "texture_view_dimension":
+                case "storage_texture_access":
+                case "buffer_map_state":
+                
+                case "error_filter":
+                case "error_type":
+
                     {
                         var strBuild = new StringBuilder();
                         var typeName = "WebGPU" + enumDef.Name.ToPascalCase();
@@ -693,6 +703,8 @@ namespace Rs64.WebGPU;
                         {
                             if (e is null) { continue; }
                             if (e.Name is "undefined") { haveUndefined = true; continue; }
+                            if (e.Name is "binding_not_used") { haveUndefined = true; continue; }
+
 
                             WriteDocument(strBuild, e.Document);
                             strBuild.AppendLine(TranslateEnumEntryName(e.Name) + ",");
@@ -716,6 +728,7 @@ namespace Rs64.WebGPU;
                             var ffiEntryEnumLiteral = ffiTypeName + "." + enumEntryName;
                             var EntryEnumLiteral = typeName + "." + enumEntryName;
                             if (e.Name is "undefined") { EntryEnumLiteral = "null"; }
+                            if (e.Name is "binding_not_used") { EntryEnumLiteral = "null"; }
                             strBuild.AppendLine($"case {EntryEnumLiteral}: return {ffiEntryEnumLiteral};");
                         }
                         strBuild.AppendLine("}");
@@ -756,6 +769,9 @@ namespace Rs64.WebGPU;
             {
                 default: break;
                 case "texture_usage":
+                case "shader_stage":
+                case "buffer_usage":
+                case "map_mode":
                     {
                         var strBuild = new StringBuilder();
 
@@ -773,12 +789,24 @@ using System;
                         strBuild.AppendLine("[Flags]");
                         strBuild.AppendLine("public enum " + typeName);
                         strBuild.AppendLine("{");
-                        foreach (var e in bitFlagDef.Entries)
+                        var flagEntry = bitFlagDef.Entries;
+                        for (var i = 0; flagEntry.Length > i; i += 1)
                         {
-                            if (e is null) { continue; }
+                            var entry = flagEntry[i];
+                            if (entry is null) { continue; }
+                            var entryName = TranslateEnumEntryName(entry.Name);
+                            var value = entry.Value ?? (ushort)(i is not 0 ? 1 << (i - 1) : 0);
+                            WriteDocument(strBuild, entry.Document);
+                            WriteNameSpace(strBuild, entry.Namespace);
 
-                            WriteDocument(strBuild, e.Document);
-                            strBuild.AppendLine(TranslateEnumEntryName(e.Name) + ",");
+                            if (entry.ValueCombination is null)
+                            {
+                                strBuild.AppendLine($"{entryName} = {value},");
+                            }
+                            else
+                            {
+                                strBuild.AppendLine($"{entryName} = {string.Join(" | ", entry.ValueCombination.Select(TranslateEnumEntryName))},");
+                            }
                         }
                         strBuild.AppendLine("}");
 
@@ -792,6 +820,7 @@ using System;
                         foreach (var e in bitFlagDef.Entries)
                         {
                             if (e is null) { continue; }
+                            if (e.ValueCombination is not null) { continue; }
 
                             var enumEntryName = TranslateEnumEntryName(e.Name);
                             var ffiEntryEnumLiteral = ffiTypeName + "." + enumEntryName;
@@ -813,6 +842,7 @@ using System;
                         foreach (var e in bitFlagDef.Entries)
                         {
                             if (e is null) { continue; }
+                            if (e.ValueCombination is not null) { continue; }
 
                             var enumEntryName = TranslateEnumEntryName(e.Name);
                             var ffiEntryEnumLiteral = ffiTypeName + "." + enumEntryName;

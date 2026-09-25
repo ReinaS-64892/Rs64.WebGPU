@@ -9,6 +9,7 @@ using System.Threading.Tasks;
 
 namespace Rs64.WebGPU;
 
+[FFINote(typeof(FFI.WGPUInstance))]
 public class WebGPUInstance : IDisposable
 {
     internal WGPUObjectHolder<FFI.WGPUInstance> Native { get; }
@@ -96,7 +97,7 @@ public class WebGPUInstance : IDisposable
                     }
                 case FFI.WGPURequestAdapterStatus.Error:
                     {
-                        Task.SetException(new RequestAdapterErrorException(message.ReadStringView() ?? "message not found"));
+                        Task.SetException(new CallBackErrorException(message.ReadStringView() ?? "message not found"));
                         return;
                     }
                 case FFI.WGPURequestAdapterStatus.Unavailable:

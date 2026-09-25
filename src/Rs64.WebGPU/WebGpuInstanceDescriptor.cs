@@ -6,6 +6,7 @@ using System.Linq;
 
 namespace Rs64.WebGPU;
 
+[FFINote(typeof(FFI.WGPUInstanceDescriptor))]
 public class WebGpuInstanceDescriptor
 {
     public HashSet<WebGPUInstanceFeatureName> RequiredFeatures = [];
@@ -17,6 +18,7 @@ public class WebGpuInstanceDescriptor
     }
 }
 
+[FFINote(typeof(FFI.WGPUInstanceLimits))]
 public class WebGPUInstanceLimits
 {
     public nuint TimedWaitAnyMaxCount = 0;

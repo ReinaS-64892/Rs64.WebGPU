@@ -6,6 +6,7 @@ using System.Runtime.CompilerServices;
 
 namespace Rs64.WebGPU;
 
+[FFINote(typeof(FFI.WGPUSurfaceDescriptor))]
 public abstract class WebGPUSurfaceDescriptor
 {
     public string? Label { get; set; }
@@ -14,6 +15,7 @@ public abstract class WebGPUSurfaceDescriptor
 
 // プラットフォーム固有になるらへんは ... 少なくとも単純に safe にすることは難しいよね ... 
 
+[FFINote(typeof(FFI.WGPUSurfaceSourceWaylandSurface))]
 public unsafe class WebGPUWaylandSurfaceDescriptor : WebGPUSurfaceDescriptor
 {
     public void* Display;

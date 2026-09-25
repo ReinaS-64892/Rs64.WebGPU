@@ -7,6 +7,7 @@ using System.Threading;
 
 namespace Rs64.WebGPU;
 
+[FFINote(typeof(FFI.IWGPUObject<>))]
 internal unsafe class WGPUObjectHolder<TWGPUObject> : IDisposable
 where TWGPUObject : unmanaged, FFI.IWGPUObject<TWGPUObject>
 {
