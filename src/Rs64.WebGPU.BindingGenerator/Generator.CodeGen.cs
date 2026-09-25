@@ -672,6 +672,8 @@ public const string {LIB_NAME_DEF} = "wgpu_native";
                 case "present_mode":
                 case "surface_get_current_texture_status":
                 case "status":
+                case "feature_name":
+                case "adapter_type":
                     {
                         var strBuild = new StringBuilder();
                         var typeName = "WebGPU" + enumDef.Name.ToPascalCase();

@@ -115,27 +115,26 @@ public class Class1
             Console.WriteLine("call instance.RequestAdapter");
             // instance.CreateSurface(new WebGPUWaylandSurfaceDescriptor() { Label = "ねこ" });
 
-
             // FFI.WGPUAdapterInfo wGPUAdapterInfo = default;
-            // var adapterInfoGetResult = FFI.WGPUAdapter.wgpuAdapterGetInfo(adapter, &wGPUAdapterInfo);
-            // Console.WriteLine("call FnWgpuAdapterGetInfo");
-            // if (adapterInfoGetResult is FFI.WGPUStatus.Success)
-            // {
-            //     Console.WriteLine("-- read wGPUAdapterInfo --");
-            //     Console.WriteLine(ReadString(wGPUAdapterInfo.Vendor));
-            //     Console.WriteLine(ReadString(wGPUAdapterInfo.Architecture));
-            //     Console.WriteLine(ReadString(wGPUAdapterInfo.Device));
-            //     Console.WriteLine(ReadString(wGPUAdapterInfo.Description));
-            //     Console.WriteLine(wGPUAdapterInfo.BackendType);
-            //     Console.WriteLine(wGPUAdapterInfo.AdapterType);
-            //     Console.WriteLine(wGPUAdapterInfo.VendorId);
-            //     Console.WriteLine(wGPUAdapterInfo.DeviceId);
-            //     Console.WriteLine("-- end --");
-            // }
-            // else
-            // {
-            //     Console.WriteLine("Error!!!");
-            // }
+            var adapterInfo = adapter.GetInfo();
+            Console.WriteLine("call adapter.GetInfo");
+            if (adapterInfo is not null)
+            {
+                Console.WriteLine("-- read wGPUAdapterInfo --");
+                Console.WriteLine(adapterInfo.Vendor);
+                Console.WriteLine(adapterInfo.Architecture);
+                Console.WriteLine(adapterInfo.Device);
+                Console.WriteLine(adapterInfo.Description);
+                Console.WriteLine(adapterInfo.BackendType);
+                Console.WriteLine(adapterInfo.AdapterType);
+                Console.WriteLine(adapterInfo.VendorId);
+                Console.WriteLine(adapterInfo.DeviceId);
+                Console.WriteLine("-- end --");
+            }
+            else
+            {
+                Console.WriteLine("Error!!!");
+            }
 
             // FFI.WGPUAdapterInfo.wgpuAdapterInfoFreeMembers(wGPUAdapterInfo);
             // Console.WriteLine("call FnWgpuAdapterInfoFreeMembers");

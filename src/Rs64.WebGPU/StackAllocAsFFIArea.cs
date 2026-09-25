@@ -18,7 +18,7 @@ internal unsafe ref struct StackAllocAsFFIArea(Span<byte> bytes)
     private readonly int _length = bytes.Length;
     private int _stackCount;
 
-    public ref T Allocate<T>()
+    public T* Allocate<T>()
     where T : unmanaged, allows ref struct
     {
         var allocateSize = sizeof(T);
@@ -29,6 +29,6 @@ internal unsafe ref struct StackAllocAsFFIArea(Span<byte> bytes)
         for (var i = 0; allocateSize > i; i += 1) { targetPtr[i] = 0; }
         _stackCount += allocateSize;
 
-        return ref Unsafe.AsRef<T>(targetPtr);
+        return (T*)targetPtr;
     }
 }
