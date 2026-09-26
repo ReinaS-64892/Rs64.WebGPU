@@ -80,11 +80,16 @@ public static partial class Generator
         argumentsBuilder.AppendLine();
 
         var isArray = IsArray(arg.TypeID);
+        var isObjectArray = false;
         if (isArray)
         {
             argumentsBuilder.AppendLine("[WebGPUArrayLength]");
             argumentsBuilder.AppendLine($"nuint {arg.Name}_count,");
             argumentsBuilder.AppendLine();
+            if (IsObject(TrimArrayPPfix(arg.TypeID)))
+            {
+                isObjectArray = true;
+            }
         }
 
         // argumentsBuilder.AppendLine("// TypeID : " + arg.TypeID);
@@ -103,7 +108,7 @@ public static partial class Generator
         if (isPointer) { WritePointerMutation(argumentsBuilder, arg.Pointer!.Value); }
         isPointer |= IsObject(arg.TypeID);
 
-        argumentsBuilder.AppendLine(TypeNameTranslate(arg.TypeID) + (isPointer ? "*" : "") + " " + arg.Name);
+        argumentsBuilder.AppendLine(TypeNameTranslate(arg.TypeID) + (isPointer ? "*" : "") + (isObjectArray ? "*" : "") + " " + arg.Name);
     }
     private static (string filename, string contents) GenerateLibraryNameSelector(CodeGenContext ctx)
     {
@@ -398,11 +403,16 @@ public const string {LIB_NAME_DEF} = "wgpu_native";
                 var memberName = member.Name.ToPascalCase();
 
                 var isArray = IsArray(member.TypeID);
+                var isObjectArray = false;
                 if (isArray)
                 {
                     strBuild.AppendLine("[WebGPUArrayLength]");
                     strBuild.AppendLine($"public nuint {memberName}Count;");
                     strBuild.AppendLine();
+                    if (IsObject(TrimArrayPPfix(member.TypeID)))
+                    {
+                        isObjectArray = true;
+                    }
                 }
 
                 WriteDocument(strBuild, member.Document);
@@ -457,9 +467,10 @@ public const string {LIB_NAME_DEF} = "wgpu_native";
 
                 var isPointer = member.Pointer.HasValue;
                 if (isPointer) { WritePointerMutation(strBuild, member.Pointer!.Value); }
-                isPointer |= IsObject(member.TypeID);
+                var isObject = IsObject(member.TypeID);
+                isPointer |= isObject;
 
-                strBuild.AppendLine($"public {TypeNameTranslate(member.TypeID)}{(isPointer ? "*" : "")} {memberName} {defaultWriteString};");
+                strBuild.AppendLine($"public {TypeNameTranslate(member.TypeID)}{(isPointer ? "*" : "") + (isObjectArray ? "*" : "")} {memberName} {defaultWriteString};");
 
                 strBuild.AppendLine();
             }
@@ -691,6 +702,7 @@ public const string {LIB_NAME_DEF} = "wgpu_native";
                 case "load_op":
                 case "store_op":
                 case "texture_aspect":
+                case "query_type":
 
                 case "error_filter":
                 case "error_type":

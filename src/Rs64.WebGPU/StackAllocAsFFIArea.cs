@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: MPL-2.0
 
 using System;
+using System.Collections.Generic;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 
@@ -18,10 +19,11 @@ internal unsafe ref struct StackAllocAsFFIArea(Span<byte> bytes)
     private readonly int _length = bytes.Length;
     private int _stackCount;
 
-    public T* Allocate<T>()
+    public T* Allocate<T>(int length = 1)
     where T : unmanaged, allows ref struct
     {
-        var allocateSize = sizeof(T);
+
+        var allocateSize = sizeof(T) * length;
         if (_length < (_stackCount + allocateSize)) { throw new StackAreaOverflowException(); }
 
         var targetPtr = _ptr + _stackCount;
@@ -30,5 +32,23 @@ internal unsafe ref struct StackAllocAsFFIArea(Span<byte> bytes)
         _stackCount += allocateSize;
 
         return (T*)targetPtr;
+    }
+}
+
+/// <param name="bytes">MUST BE FROM STACKALLOC</param>
+internal unsafe ref struct FFIMemoryManager(Span<byte> bytes) : IDisposable
+{
+    public StackAllocAsFFIArea stackArea = new(bytes);
+    public FFI.WGPUStringView AllocateString(string? str)
+    {
+        var h = FFI.WGPUStringView.ConvertPinnedString(str);
+        _holders.Add(h);
+        return h.GetStringView();
+    }
+    List<FFI.WGPUStringView.WGPUPinnedStringHolder> _holders = new();
+    public void Dispose()
+    {
+        foreach (var h in _holders) { h.Dispose(); }
+        _holders.Clear();
     }
 }

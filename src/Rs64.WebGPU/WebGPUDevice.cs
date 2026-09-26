@@ -2,8 +2,8 @@
 // SPDX-License-Identifier: MPL-2.0
 
 using System;
+using System.Collections.Generic;
 using System.Threading.Tasks;
-
 namespace Rs64.WebGPU;
 
 [FFINote(typeof(FFI.WGPUDevice))]
@@ -114,69 +114,179 @@ public class WebGPUDevice : IDisposable
             }
         }
     }
-    public void CreateComputePipeline()
+    public WebGPUComputePipeline CreateComputePipeline(WebGPUComputePipelineDescriptor computePipelineDescriptor)
     {
+        unsafe
+        {
+            using var ffiMem = new FFIMemoryManager(stackalloc byte[256]);
+            FFI.WGPUComputePipelineDescriptor ffiComputePipelineDescriptor = computePipelineDescriptor.ToF(ffiMem);
 
+            return new WebGPUComputePipeline(new(FFI.WGPUDevice.wgpuDeviceCreateComputePipeline(Native.GetPtr(), &ffiComputePipelineDescriptor)));
+        }
     }
-    public void CreateComputePipelineAsync()
+    public Task<WebGPUComputePipeline> CreateComputePipelineAsync(WebGPUComputePipelineDescriptor computePipelineDescriptor)
     {
+        var taskCompletionSource = new TaskCompletionSource<WebGPUComputePipeline>();
+        unsafe
+        {
+            using var ffiMem = new FFIMemoryManager(stackalloc byte[256]);
+            FFI.WGPUCreateComputePipelineAsyncCallbackInfo callbackInfo = new()
+            {
+                CallBackMode = FFI.WGPUCallbackMode.AllowSpontaneous,
+                WGPUCreateComputePipelineAsyncCallback = &FFI.WGPUCreateComputePipelineAsyncCallbackManagedWrapper.CallBack,
+                UserData1 = FFI.WGPUCreateComputePipelineAsyncCallbackManagedWrapper.CreateUserData(
+                    new CreateComputePipelineAsyncCallback(taskCompletionSource)
+                )
+            };
 
+            var ffiComputePipelineDescriptor = computePipelineDescriptor.ToF(ffiMem);
+            var _ = FFI.WGPUDevice.wgpuDeviceCreateComputePipelineAsync(Native.GetPtr(), &ffiComputePipelineDescriptor, callbackInfo);
+        }
+        return taskCompletionSource.Task;
     }
-    public void CreatePipelineLayout()
+    class CreateComputePipelineAsyncCallback(TaskCompletionSource<WebGPUComputePipeline> taskCompletionSource) : FFI.IWGPUCreateComputePipelineAsyncCallback
     {
+        public TaskCompletionSource<WebGPUComputePipeline> TaskCompletionSource { get; } = taskCompletionSource;
 
+        public unsafe void CallBack(
+            FFI.WGPUCreatePipelineAsyncStatus status,
+
+            [FFI.WebGPUPassedWithOwnership(true)]
+            FFI.WGPUComputePipeline* pipeline,
+
+            [FFI.WebGPUOutString]
+            FFI.WGPUStringView message
+        )
+        {
+            switch (status)
+            {
+                case FFI.WGPUCreatePipelineAsyncStatus.Success:
+                    {
+                        TaskCompletionSource.SetResult(new(new(pipeline)));
+                        return;
+                    }
+                case FFI.WGPUCreatePipelineAsyncStatus.InternalError:
+                    {
+                        TaskCompletionSource.SetException(new CallBackErrorException("InternalError : " + message.ReadStringView() ?? "message not found"));
+                        return;
+                    }
+                case FFI.WGPUCreatePipelineAsyncStatus.ValidationError:
+                    {
+                        TaskCompletionSource.SetException(new CallBackErrorException("ValidationError : " + message.ReadStringView() ?? "message not found"));
+                        return;
+                    }
+                case FFI.WGPUCreatePipelineAsyncStatus.CallbackCancelled:
+                    {
+                        TaskCompletionSource.SetCanceled();
+                        return;
+                    }
+            }
+            throw new InvalidCallBackStatusException(message.ReadStringView() ?? "message not found");
+        }
     }
-    public void CreateQuerySet()
+    public WebGPUPipelineLayout CreatePipelineLayout(WebGPUPipelineLayoutDescriptor pipelineLayoutDescriptor)
     {
-
+        unsafe
+        {
+            using var ffiMem = new FFIMemoryManager(stackalloc byte[256]);
+            var ffiPipelineLayoutDescriptor = pipelineLayoutDescriptor.ToF(ffiMem);
+            return new(new(FFI.WGPUDevice.wgpuDeviceCreatePipelineLayout(Native.GetPtr(), &ffiPipelineLayoutDescriptor)));
+        }
     }
-    public void CreateRenderPipelineAsync()
+    public WebGPUQuerySet CreateQuerySet(WebGPUQuerySetDescriptor querySetDescriptor)
     {
+        unsafe
+        {
+            fixed (byte* lPtr = FFI.WGPUStringView.ConvertWGPUStringParts(querySetDescriptor.Label, out var ll))
+            {
+                FFI.WGPUQuerySetDescriptor ffiQuerySetDescriptor = new()
+                {
+                    Label = new(lPtr, ll),
+                    Type = querySetDescriptor.Type.ToF(),
+                    Count = querySetDescriptor.Count,
+                };
+                return new(new(FFI.WGPUDevice.wgpuDeviceCreateQuerySet(Native.GetPtr(),)));
+            }
+        }
+    }
 
+    public Task<WebGPURenderPipeline> CreateRenderPipelineAsync(WebGPURenderPipelineDescriptor renderPipelineDescriptor)
+    {
+        var taskCompletionSource = new TaskCompletionSource<WebGPURenderPipeline>();
+        unsafe
+        {
+            FFI.WGPUCreateRenderPipelineAsyncCallbackInfo callback = new()
+            {
+                CallBackMode = FFI.WGPUCallbackMode.AllowSpontaneous,
+                WGPUCreateRenderPipelineAsyncCallback = &FFI.WGPUCreateRenderPipelineAsyncCallbackManagedWrapper.CallBack,
+                UserData1 = FFI.WGPUCreateRenderPipelineAsyncCallbackManagedWrapper.CreateUserData(new CreateRenderPipelineAsyncCallback(taskCompletionSource))
+            };
+            using var ffiMem = new FFIMemoryManager(stackalloc byte[256]);
+            var ffiPipelineLayoutDescriptor = renderPipelineDescriptor.ToF(ffiMem);
+            var _ = FFI.WGPUDevice.wgpuDeviceCreateRenderPipelineAsync(Native.GetPtr(), &ffiPipelineLayoutDescriptor, callback);
+        }
+        return taskCompletionSource.Task;
+    }
+    class CreateRenderPipelineAsyncCallback(TaskCompletionSource<WebGPURenderPipeline> taskCompletionSource) : FFI.IWGPUCreateRenderPipelineAsyncCallback
+    {
+        public TaskCompletionSource<WebGPURenderPipeline> TaskCompletionSource { get; } = taskCompletionSource;
+
+        public unsafe void CallBack(
+        FFI.WGPUCreatePipelineAsyncStatus status,
+
+        [FFI.WebGPUPassedWithOwnership(true)]
+        FFI.WGPURenderPipeline* pipeline,
+
+        [FFI.WebGPUOutString]
+        FFI.WGPUStringView message
+        )
+        {
+
+        }
     }
     public void CreateRenderBundleEncoder()
     {
-
+        unsafe { FFI.WGPUDevice.wgpuDeviceCreateRenderBundleEncoder(Native.GetPtr()); }
     }
     public void CreateRenderPipeline()
     {
-
+        unsafe { FFI.WGPUDevice.wgpuDeviceCreateRenderPipeline(Native.GetPtr()); }
     }
     public void CreateSampler()
     {
-
+        unsafe { FFI.WGPUDevice.wgpuDeviceCreateSampler(Native.GetPtr()); }
     }
     public void CreateShaderModule()
     {
-
+        unsafe { FFI.WGPUDevice.wgpuDeviceCreateShaderModule(Native.GetPtr()); }
     }
     public void CreateTexture()
     {
-
+        unsafe { FFI.WGPUDevice.wgpuDeviceCreateTexture(Native.GetPtr()); }
     }
     public void Destroy()
     {
-
+        unsafe { FFI.WGPUDevice.wgpuDeviceDestroy(Native.GetPtr()); }
     }
     public void GetLostFuture()
     {
-
+        unsafe { FFI.WGPUDevice.wgpuDeviceGetLostFuture(Native.GetPtr()); }
     }
     public void GetLimits()
     {
-
+        unsafe { FFI.WGPUDevice.wgpuDeviceGetLimits(Native.GetPtr()); }
     }
     public void HasFeature()
     {
-
+        unsafe { FFI.WGPUDevice.wgpuDeviceHasFeature(Native.GetPtr()); }
     }
     public void GetFeatures()
     {
-
+        unsafe { FFI.WGPUDevice.wgpuDeviceGetFeatures(Native.GetPtr()); }
     }
     public void GetAdapterInfo()
     {
-
+        unsafe { FFI.WGPUDevice.wgpuDeviceGetAdapterInfo(Native.GetPtr()); }
     }
     // public WebGPUQueue GetQueue()
     // {
@@ -252,4 +362,37 @@ public class WebGPUDevice : IDisposable
         }
     }
 
+}
+
+
+[FFINote(typeof(FFI.WGPUQuerySetDescriptor))]
+public class WebGPUQuerySetDescriptor
+{
+    public string Label = "";
+    public WebGPUQueryType Type;
+    public uint Count;
+}
+
+[FFINote(typeof(FFI.WGPUPipelineLayoutDescriptor))]
+public class WebGPUPipelineLayoutDescriptor
+{
+    public string Label = "";
+    public required WebGPUBindGroupLayout[] BindGroupLayouts;
+    public uint ImmediateSize = 0;
+
+    internal unsafe FFI.WGPUPipelineLayoutDescriptor ToF(FFIMemoryManager ffiMem)
+    {
+        var bindGroupLayoutsPtr = (FFI.WGPUBindGroupLayout**)ffiMem.stackArea.Allocate<IntPtr>(BindGroupLayouts.Length);
+        for (var i = 0; BindGroupLayouts.Length > i; i += 1)
+        {
+            bindGroupLayoutsPtr[i] = BindGroupLayouts[i].Native.GetPtr();
+        }
+        return new()
+        {
+            Label = ffiMem.AllocateString(Label),
+            BindGroupLayoutsCount = (nuint)BindGroupLayouts.Length,
+            BindGroupLayouts = bindGroupLayoutsPtr,
+            ImmediateSize = ImmediateSize,
+        };
+    }
 }

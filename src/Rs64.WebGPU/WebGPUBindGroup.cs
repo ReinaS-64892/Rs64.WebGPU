@@ -27,11 +27,11 @@ public class WebGPUBindGroupEntry
     }
     public class BindSampler : BindResource
     {
-        public WebGPUSampler Sampler;
+        public required WebGPUSampler Sampler;
     }
     public class BindTextureView : BindResource
     {
-        public WebGPUTextureView TextureView;
+        public required WebGPUTextureView TextureView;
     }
 
     internal static unsafe FFI.WGPUBindGroupEntry ToF(WebGPUBindGroupEntry webGPUBindGroupEntry)

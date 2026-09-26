@@ -135,7 +135,7 @@ public class WebGPUCommandEncoder : IDisposable
                 &ffiCopySize
             );
         }
-    }WGPUObjectHolder<
+    }
     public void CopyTextureToBuffer(
         WebGPUTexelCopyTextureInfo source,
         WebGPUTexelCopyBufferInfo destination,

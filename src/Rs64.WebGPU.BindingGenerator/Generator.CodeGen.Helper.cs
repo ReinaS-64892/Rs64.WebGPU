@@ -68,7 +68,7 @@ namespace Rs64.WebGPU.FFI;
     {
         if (IsArray(typeID))
         {
-            return TypeNameTranslate(typeID.TrimStart(ARRAY_BEGIN).TrimEnd(ARRAY_END).ToString());
+            return TypeNameTranslate(TrimArrayPPfix(typeID));
         }
 
         var nameSpace = typeID.Split('.');
@@ -133,6 +133,12 @@ namespace Rs64.WebGPU.FFI;
         }
         return "ERROR";
     }
+
+    internal static string TrimArrayPPfix(string typeID)
+    {
+        return typeID.TrimStart(ARRAY_BEGIN).TrimEnd(ARRAY_END).ToString();
+    }
+
     static bool IsStringTypeID(string typeID)
     {
         switch (typeID)

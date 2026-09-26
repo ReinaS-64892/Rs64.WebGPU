@@ -61,4 +61,33 @@ internal unsafe ref struct WGPUStringView
         length = (nuint)managedArray.Length;
         return managedArray;
     }
+    internal static WGPUPinnedStringHolder ConvertPinnedString(string? dotnetString)
+    {
+        if (dotnetString is null) { return new(null, 0, null); }
+
+        var managedArray = Encoding.UTF8.GetBytes(dotnetString);
+        var gcHandle = GCHandle.Alloc(managedArray);
+        return new((byte*)gcHandle.AddrOfPinnedObject(), managedArray.Length, gcHandle);
+    }
+    internal struct WGPUPinnedStringHolder(byte* stringView, int length, GCHandle? gCHandle) : IDisposable
+    {
+        byte* _stringView = stringView;
+        int _length = length;
+        GCHandle? _gcHandle = gCHandle;
+        public WGPUStringView GetStringView()
+        {
+            if (_gcHandle is null) return WGPUStringView.Null;
+            return new(_stringView, _length);
+        }
+
+        public void Dispose()
+        {
+            if (_gcHandle is null) { return; }
+
+            _gcHandle?.Free();
+            _gcHandle = null;
+            _stringView = null;
+            _length = 0;
+        }
+    }
 }

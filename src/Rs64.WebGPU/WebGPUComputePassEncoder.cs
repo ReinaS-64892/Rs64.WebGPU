@@ -86,16 +86,6 @@ public class WebGPUComputePassEncoder : IDisposable
     }
 }
 
-[FFINote(typeof(FFI.WGPUComputePipeline))]
-public class WebGPUComputePipeline : IDisposable
-{
-    internal WGPUObjectHolder<FFI.WGPUComputePipeline> Native { get; }
-    internal WebGPUComputePipeline(WGPUObjectHolder<FFI.WGPUComputePipeline> holder) { Native = holder; }
-    public void Dispose() { Native.Dispose(); }
-
-    // TODO 
-}
-
 [FFINote(typeof(FFI.WGPUComputePassDescriptor))]
 public class WebGPUComputePassDescriptor
 {
