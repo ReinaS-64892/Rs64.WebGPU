@@ -79,6 +79,14 @@ public static partial class Generator
     {
         argumentsBuilder.AppendLine();
 
+        var isArray = IsArray(arg.TypeID);
+        if (isArray)
+        {
+            argumentsBuilder.AppendLine("[WebGPUArrayLength]");
+            argumentsBuilder.AppendLine($"nuint {arg.Name}_count,");
+            argumentsBuilder.AppendLine();
+        }
+
         // argumentsBuilder.AppendLine("// TypeID : " + arg.TypeID);
         if (arg.Default is not null) argumentsBuilder.AppendLine("//Debug Argument Default : " + arg.Name + " = " + arg.Default.ToString());
 
@@ -680,7 +688,10 @@ public const string {LIB_NAME_DEF} = "wgpu_native";
                 case "texture_view_dimension":
                 case "storage_texture_access":
                 case "buffer_map_state":
-                
+                case "load_op":
+                case "store_op":
+                case "texture_aspect":
+
                 case "error_filter":
                 case "error_type":
 

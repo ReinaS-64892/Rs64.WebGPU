@@ -45,12 +45,10 @@ public class WebGPUCommandEncoder : IDisposable
                     ffiComputePassDescriptor.Label = new(labelPtr, length);
                     if (computePassDescriptor.TimestampWrites is not null)
                     {
-                        passTimestampWrites.QuerySet = computePassDescriptor.TimestampWrites.QuerySet.Native.GetPtr();
-                        passTimestampWrites.BeginningOfPassWriteIndex = computePassDescriptor.TimestampWrites.BeginningOfPassWriteIndex ?? FFI.Webgpu.WGPU_QUERY_SET_INDEX_UNDEFINED;
-                        passTimestampWrites.EndOfPassWriteIndex = computePassDescriptor.TimestampWrites.EndOfPassWriteIndex ?? FFI.Webgpu.WGPU_QUERY_SET_INDEX_UNDEFINED;
+                        computePassDescriptor.TimestampWrites.Write(ref passTimestampWrites);
                         ffiComputePassDescriptor.TimestampWrites = &passTimestampWrites;
                     }
-                    return new(new(FFI.WGPUCommandEncoder.wgpuCommandEncoderBeginComputePass(Native.GetPtr(), null)));
+                    return new(new(FFI.WGPUCommandEncoder.wgpuCommandEncoderBeginComputePass(Native.GetPtr(), &ffiComputePassDescriptor)));
                 }
             }
             else
@@ -59,56 +57,275 @@ public class WebGPUCommandEncoder : IDisposable
             }
         }
     }
-    public void BeginRenderPass()
+    public WebGPURenderPassEncoder BeginRenderPass(WebGPURenderPassDescriptor renderPassDescriptor)
     {
-        FFI.WGPUCommandEncoder.wgpuCommandEncoderBeginRenderPass(Native.GetPtr());
+        unsafe
+        {
+            FFI.WGPURenderPassDescriptor ffiRenderPassDescriptor = new();
+            FFI.WGPUPassTimestampWrites ffiTimestampWrites;
+            FFI.WGPURenderPassDepthStencilAttachment ffiDepthStencilAttachment;
+
+            var caPtr = stackalloc FFI.WGPURenderPassColorAttachment[renderPassDescriptor.ColorAttachments.Length];
+            for (var i = 0; renderPassDescriptor.ColorAttachments.Length > i; i += 1)
+            {
+                caPtr[i] = renderPassDescriptor.ColorAttachments[i].ToF();
+            }
+            ffiRenderPassDescriptor.ColorAttachmentsCount = (nuint)renderPassDescriptor.ColorAttachments.Length;
+            ffiRenderPassDescriptor.ColorAttachments = caPtr;
+            fixed (byte* lPtr = FFI.WGPUStringView.ConvertWGPUStringParts(renderPassDescriptor.Label, out var ll))
+            {
+                ffiRenderPassDescriptor.Label = new(lPtr, ll);
+                if (renderPassDescriptor.DepthStencilAttachment is not null)
+                {
+                    ffiDepthStencilAttachment = new()
+                    {
+                        View = renderPassDescriptor.DepthStencilAttachment.View.Native.GetPtr(),
+                        DepthLoadOp = renderPassDescriptor.DepthStencilAttachment.DepthLoadOp.ToF(),
+                        DepthStoreOp = renderPassDescriptor.DepthStencilAttachment.DepthStoreOp.ToF(),
+                        DepthClearValue = renderPassDescriptor.DepthStencilAttachment.DepthClearValue.HasValue ? renderPassDescriptor.DepthStencilAttachment.DepthClearValue.Value : FFI.Webgpu.WGPU_DEPTH_CLEAR_VALUE_UNDEFINED,
+                        DepthReadOnly = (FFI.WGPUBool)renderPassDescriptor.DepthStencilAttachment.DepthReadOnly,
+                        StencilLoadOp = renderPassDescriptor.DepthStencilAttachment.StencilLoadOp.ToF(),
+                        StencilStoreOp = renderPassDescriptor.DepthStencilAttachment.StencilStoreOp.ToF(),
+                        StencilClearValue = renderPassDescriptor.DepthStencilAttachment.StencilClearValue,
+                        StencilReadOnly = (FFI.WGPUBool)renderPassDescriptor.DepthStencilAttachment.StencilReadOnly,
+                    };
+                    ffiRenderPassDescriptor.DepthStencilAttachment = &ffiDepthStencilAttachment;
+                }
+                if (renderPassDescriptor.OcclusionQuerySet is not null)
+                    ffiRenderPassDescriptor.OcclusionQuerySet = renderPassDescriptor.OcclusionQuerySet.Native.GetPtr();
+                if (renderPassDescriptor.TimestampWrites is not null)
+                {
+                    ffiTimestampWrites = new();
+                    renderPassDescriptor.TimestampWrites.Write(ref ffiTimestampWrites);
+                    ffiRenderPassDescriptor.TimestampWrites = &ffiTimestampWrites;
+                }
+                return new(new(FFI.WGPUCommandEncoder.wgpuCommandEncoderBeginRenderPass(Native.GetPtr(), &ffiRenderPassDescriptor)));
+            }
+        }
     }
-    public void CopyBufferToBuffer()
+    public void CopyBufferToBuffer(
+        WebGPUBuffer source, ulong sourceOffset,
+        WebGPUBuffer destination, ulong destinationOffset,
+        ulong size
+    )
     {
-        FFI.WGPUCommandEncoder.wgpuCommandEncoderCopyBufferToBuffer(Native.GetPtr());
+        unsafe
+        {
+            FFI.WGPUCommandEncoder.wgpuCommandEncoderCopyBufferToBuffer(Native.GetPtr(),
+                source.Native.GetPtr(), sourceOffset,
+                destination.Native.GetPtr(), destinationOffset,
+                size
+            );
+        }
     }
-    public void CopyBufferToTexture()
+    public void CopyBufferToTexture(
+        WebGPUTexelCopyBufferInfo source,
+        WebGPUTexelCopyTextureInfo destination,
+        WebGPUExtent3d copySize
+    )
     {
-        FFI.WGPUCommandEncoder.wgpuCommandEncoderCopyBufferToTexture(Native.GetPtr());
+        unsafe
+        {
+            var ffiSource = source.ToF();
+            var ffiDestination = destination.ToF();
+            var ffiCopySize = copySize.ToF();
+            FFI.WGPUCommandEncoder.wgpuCommandEncoderCopyBufferToTexture(Native.GetPtr(),
+                &ffiSource,
+                &ffiDestination,
+                &ffiCopySize
+            );
+        }
+    }WGPUObjectHolder<
+    public void CopyTextureToBuffer(
+        WebGPUTexelCopyTextureInfo source,
+        WebGPUTexelCopyBufferInfo destination,
+        WebGPUExtent3d copySize
+    )
+    {
+        unsafe
+        {
+            var ffiSource = source.ToF();
+            var ffiDestination = destination.ToF();
+            var ffiCopySize = copySize.ToF();
+            FFI.WGPUCommandEncoder.wgpuCommandEncoderCopyTextureToBuffer(Native.GetPtr(),
+                &ffiSource,
+                &ffiDestination,
+                &ffiCopySize
+            );
+        }
     }
-    public void CopyTextureToBuffer()
+    public void CopyTextureToTexture(
+        WebGPUTexelCopyTextureInfo source,
+        WebGPUTexelCopyTextureInfo destination,
+        WebGPUExtent3d copySize
+    )
     {
-        FFI.WGPUCommandEncoder.wgpuCommandEncoderCopyTextureToBuffer(Native.GetPtr());
+        unsafe
+        {
+            var ffiSource = source.ToF();
+            var ffiDestination = destination.ToF();
+            var ffiCopySize = copySize.ToF();
+            FFI.WGPUCommandEncoder.wgpuCommandEncoderCopyTextureToTexture(Native.GetPtr(),
+                &ffiSource,
+                &ffiDestination,
+                &ffiCopySize
+            );
+        }
     }
-    public void CopyTextureToTexture()
+    public void ClearBuffer(
+        WebGPUBuffer buffer,
+        ulong offset,
+        ulong size
+    )
     {
-        FFI.WGPUCommandEncoder.wgpuCommandEncoderCopyTextureToTexture(Native.GetPtr());
+        unsafe { FFI.WGPUCommandEncoder.wgpuCommandEncoderClearBuffer(Native.GetPtr(), buffer.Native.GetPtr(), offset, size); }
     }
-    public void ClearBuffer()
+    public void InsertDebugMarker(string markerLabel)
     {
-        FFI.WGPUCommandEncoder.wgpuCommandEncoderClearBuffer(Native.GetPtr());
-    }
-    public void InsertDebugMarker()
-    {
-        FFI.WGPUCommandEncoder.wgpuCommandEncoderInsertDebugMarker(Native.GetPtr());
+        unsafe
+        {
+            fixed (byte* lPtr = FFI.WGPUStringView.ConvertWGPUStringParts(markerLabel, out var ll))
+                FFI.WGPUCommandEncoder.wgpuCommandEncoderInsertDebugMarker(Native.GetPtr(), new(lPtr, ll));
+        }
     }
     public void PopDebugGroup()
     {
-        FFI.WGPUCommandEncoder.wgpuCommandEncoderPopDebugGroup(Native.GetPtr());
+        unsafe { FFI.WGPUCommandEncoder.wgpuCommandEncoderPopDebugGroup(Native.GetPtr()); }
     }
-    public void PushDebugGroup()
+    public void PushDebugGroup(string groupLabel)
     {
-        FFI.WGPUCommandEncoder.wgpuCommandEncoderPushDebugGroup(Native.GetPtr());
+        unsafe
+        {
+            fixed (byte* lPtr = FFI.WGPUStringView.ConvertWGPUStringParts(groupLabel, out var ll))
+                FFI.WGPUCommandEncoder.wgpuCommandEncoderPushDebugGroup(Native.GetPtr(), new(lPtr, ll));
+        }
     }
-    public void ResolveQuerySet()
+    public void ResolveQuerySet(
+        WebGPUQuerySet querySet,
+        uint firstQuery,
+        uint queryCount,
+        WebGPUBuffer destination,
+        ulong destinationOffset
+    )
     {
-        FFI.WGPUCommandEncoder.wgpuCommandEncoderResolveQuerySet(Native.GetPtr());
+        unsafe
+        {
+            FFI.WGPUCommandEncoder.wgpuCommandEncoderResolveQuerySet(Native.GetPtr(),
+                querySet.Native.GetPtr(),
+                firstQuery,
+                queryCount,
+                destination.Native.GetPtr(),
+                destinationOffset
+            );
+        }
     }
-    public void WriteTimestamp()
+    public void WriteTimestamp(
+        WebGPUQuerySet querySet,
+        uint queryIndex
+    )
     {
-        FFI.WGPUCommandEncoder.wgpuCommandEncoderWriteTimestamp(Native.GetPtr());
+        unsafe
+        {
+            FFI.WGPUCommandEncoder.wgpuCommandEncoderWriteTimestamp(Native.GetPtr(),
+                querySet.Native.GetPtr(),
+                queryIndex
+            );
+        }
     }
-    public void SetLabel()
+    public void SetLabel(string label)
     {
-        FFI.WGPUCommandEncoder.wgpuCommandEncoderSetLabel(Native.GetPtr());
+        unsafe
+        {
+            fixed (byte* lPtr = FFI.WGPUStringView.ConvertWGPUStringParts(label, out var ll))
+                FFI.WGPUCommandEncoder.wgpuCommandEncoderSetLabel(Native.GetPtr(), new(lPtr, ll));
+        }
     }
 
 
+}
+
+[FFINote(typeof(FFI.WGPUTexelCopyBufferInfo))]
+public class WebGPUTexelCopyBufferInfo
+{
+    public WebGPUTexelCopyBufferLayout Layout;
+    public required WebGPUBuffer Buffer;
+    internal FFI.WGPUTexelCopyBufferInfo ToF()
+    {
+        unsafe
+        {
+            return new()
+            {
+                Layout = Layout.ToF(),
+                Buffer = Buffer.Native.GetPtr(),
+            };
+        }
+    }
+}
+
+[FFINote(typeof(FFI.WGPUTexelCopyBufferLayout))]
+public struct WebGPUTexelCopyBufferLayout
+{
+    public ulong Offset;
+    public uint? BytesPerRow;
+    public uint? RowsPerImage;
+    internal FFI.WGPUTexelCopyBufferLayout ToF()
+    {
+        return new()
+        {
+            Offset = Offset,
+            BytesPerRow = BytesPerRow.HasValue ? BytesPerRow.Value : FFI.Webgpu.WGPU_COPY_STRIDE_UNDEFINED,
+            RowsPerImage = RowsPerImage.HasValue ? RowsPerImage.Value : FFI.Webgpu.WGPU_COPY_STRIDE_UNDEFINED,
+        };
+    }
+}
+
+[FFINote(typeof(FFI.WGPUTexelCopyTextureInfo))]
+public class WebGPUTexelCopyTextureInfo
+{
+    public required WebGPUTexture Texture;
+    public uint MipLevel = 0;
+    public WebGPUOrigin3d Origin;
+    public WebGPUTextureAspect? Aspect;
+
+    internal FFI.WGPUTexelCopyTextureInfo ToF()
+    {
+        unsafe
+        {
+            return new()
+            {
+                Texture = Texture.Native.GetPtr(),
+                MipLevel = MipLevel,
+                Origin = Origin.ToF(),
+                Aspect = Aspect.ToF(),
+            };
+        }
+    }
+}
+
+[FFINote(typeof(FFI.WGPUOrigin3d))]
+public struct WebGPUOrigin3d
+{
+    public uint X;
+    public uint Y;
+    public uint Z;
+    internal FFI.WGPUOrigin3d ToF() { return new() { X = X, Y = Y, Z = Z }; }
+}
+
+[FFINote(typeof(FFI.WGPUExtent3d))]
+public class WebGPUExtent3d
+{
+    public uint Width;
+    public uint Height = 1;
+    public uint DepthOrArrayLayers = 1;
+    internal FFI.WGPUExtent3d ToF()
+    {
+        return new()
+        {
+            Width = Width,
+            Height = Height,
+            DepthOrArrayLayers = DepthOrArrayLayers,
+        };
+    }
 }
 
 
@@ -124,6 +341,8 @@ public class WebGPUCommandBuffer
     internal WGPUObjectHolder<FFI.WGPUCommandBuffer> Native { get; }
     internal WebGPUCommandBuffer(WGPUObjectHolder<FFI.WGPUCommandBuffer> holder) { Native = holder; }
     public void Dispose() { Native.Dispose(); }
+
+    // TODO 
 }
 
 [FFINote(typeof(FFI.WGPUCommandEncoderDescriptor))]

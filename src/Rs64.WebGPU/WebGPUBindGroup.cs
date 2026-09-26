@@ -74,6 +74,8 @@ public class WebGPUBindGroupLayout : IDisposable
     internal WGPUObjectHolder<FFI.WGPUBindGroupLayout> Native { get; }
     internal WebGPUBindGroupLayout(WGPUObjectHolder<FFI.WGPUBindGroupLayout> holder) { Native = holder; }
     public void Dispose() { Native.Dispose(); }
+
+    // TODO 
 }
 [FFINote(typeof(FFI.WGPUBindGroup))]
 public class WebGPUBindGroup : IDisposable
