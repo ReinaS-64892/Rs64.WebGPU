@@ -3,6 +3,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading.Tasks;
 namespace Rs64.WebGPU;
 
@@ -205,7 +206,7 @@ public class WebGPUDevice : IDisposable
                     Type = querySetDescriptor.Type.ToF(),
                     Count = querySetDescriptor.Count,
                 };
-                return new(new(FFI.WGPUDevice.wgpuDeviceCreateQuerySet(Native.GetPtr(),)));
+                return new(new(FFI.WGPUDevice.wgpuDeviceCreateQuerySet(Native.GetPtr(), &ffiQuerySetDescriptor)));
             }
         }
     }
@@ -232,66 +233,152 @@ public class WebGPUDevice : IDisposable
         public TaskCompletionSource<WebGPURenderPipeline> TaskCompletionSource { get; } = taskCompletionSource;
 
         public unsafe void CallBack(
-        FFI.WGPUCreatePipelineAsyncStatus status,
+            FFI.WGPUCreatePipelineAsyncStatus status,
 
-        [FFI.WebGPUPassedWithOwnership(true)]
-        FFI.WGPURenderPipeline* pipeline,
+            [FFI.WebGPUPassedWithOwnership(true)]
+            FFI.WGPURenderPipeline* pipeline,
 
-        [FFI.WebGPUOutString]
-        FFI.WGPUStringView message
+            [FFI.WebGPUOutString]
+            FFI.WGPUStringView message
         )
         {
+            switch (status)
+            {
+                case FFI.WGPUCreatePipelineAsyncStatus.Success:
+                    {
+                        TaskCompletionSource.SetResult(new(new(pipeline)));
+                        return;
+                    }
+                case FFI.WGPUCreatePipelineAsyncStatus.InternalError:
+                    {
+                        TaskCompletionSource.SetException(new CallBackErrorException("InternalError : " + message.ReadStringView() ?? "message not found"));
+                        return;
+                    }
+                case FFI.WGPUCreatePipelineAsyncStatus.ValidationError:
+                    {
+                        TaskCompletionSource.SetException(new CallBackErrorException("ValidationError : " + message.ReadStringView() ?? "message not found"));
+                        return;
+                    }
+                case FFI.WGPUCreatePipelineAsyncStatus.CallbackCancelled:
+                    {
+                        TaskCompletionSource.SetCanceled();
+                        return;
+                    }
 
+                    throw new InvalidCallBackStatusException(message.ReadStringView() ?? "message not found");
+            }
         }
     }
-    public void CreateRenderBundleEncoder()
+    public WebGPURenderBundleEncoder CreateRenderBundleEncoder(WebGPURenderBundleEncoderDescriptor renderBundleEncoderDescriptor)
     {
-        unsafe { FFI.WGPUDevice.wgpuDeviceCreateRenderBundleEncoder(Native.GetPtr()); }
+        unsafe
+        {
+            fixed (byte* lPtr = FFI.WGPUStringView.ConvertWGPUStringParts(renderBundleEncoderDescriptor.Label, out var ll))
+            {
+                var colorFomarts = stackalloc FFI.WGPUTextureFormat[renderBundleEncoderDescriptor.ColorFormats.Length];
+                for (var i = 0; renderBundleEncoderDescriptor.ColorFormats.Length > i; i += 1)
+                {
+                    colorFomarts[i] = renderBundleEncoderDescriptor.ColorFormats[i].ToF();
+                }
+                FFI.WGPURenderBundleEncoderDescriptor ffirenderBundleEncoderDescriptor = new()
+                {
+                    Label = new(lPtr, ll),
+                    ColorFormatsCount = (nuint)renderBundleEncoderDescriptor.ColorFormats.Length,
+                    ColorFormats = colorFomarts,
+                    DepthStencilFormat = renderBundleEncoderDescriptor.DepthStencilFormat.ToF(),
+                    SampleCount = renderBundleEncoderDescriptor.SampleCount,
+                    DepthReadOnly = (FFI.WGPUBool)renderBundleEncoderDescriptor.DepthReadOnly,
+                    StencilReadOnly = (FFI.WGPUBool)renderBundleEncoderDescriptor.StencilReadOnly,
+                };
+
+                return new(new(FFI.WGPUDevice.wgpuDeviceCreateRenderBundleEncoder(Native.GetPtr(), &ffirenderBundleEncoderDescriptor)));
+            }
+        }
     }
-    public void CreateRenderPipeline()
+    public WebGPURenderPipeline CreateRenderPipeline(WebGPURenderPipelineDescriptor renderPipelineDescriptor)
     {
-        unsafe { FFI.WGPUDevice.wgpuDeviceCreateRenderPipeline(Native.GetPtr()); }
+        unsafe
+        {
+            using var ffiMem = new FFIMemoryManager(stackalloc byte[64]);
+            var ffiDesc = renderPipelineDescriptor.ToF(ffiMem);
+            return new(new(FFI.WGPUDevice.wgpuDeviceCreateRenderPipeline(Native.GetPtr(), &ffiDesc)));
+        }
     }
-    public void CreateSampler()
+    public WebGPUSampler CreateSampler(WebGPUSamplerDescriptor samplerDescriptor)
     {
-        unsafe { FFI.WGPUDevice.wgpuDeviceCreateSampler(Native.GetPtr()); }
+        unsafe
+        {
+            var ffiDesc = samplerDescriptor.ToF();
+            return new(new(FFI.WGPUDevice.wgpuDeviceCreateSampler(Native.GetPtr(), &ffiDesc)));
+        }
     }
-    public void CreateShaderModule()
+    public WebGPUShaderModule CreateShaderModule(WebGPUShaderModuleDescriptor shaderModuleDescriptor)
     {
-        unsafe { FFI.WGPUDevice.wgpuDeviceCreateShaderModule(Native.GetPtr()); }
+        unsafe
+        {
+            var ffiDesc = shaderModuleDescriptor.ToF();
+            return new(new(FFI.WGPUDevice.wgpuDeviceCreateShaderModule(Native.GetPtr(), &ffiDesc)));
+        }
     }
-    public void CreateTexture()
+    public WebGPUTexture CreateTexture(WebGPUTextureDescriptor textureDescriptor)
     {
-        unsafe { FFI.WGPUDevice.wgpuDeviceCreateTexture(Native.GetPtr()); }
+        unsafe
+        {
+            var ffiDesc = textureDescriptor.ToF();
+            return new(new(FFI.WGPUDevice.wgpuDeviceCreateTexture(Native.GetPtr(), &ffiDesc)));
+        }
     }
     public void Destroy()
     {
         unsafe { FFI.WGPUDevice.wgpuDeviceDestroy(Native.GetPtr()); }
     }
-    public void GetLostFuture()
+    internal void GetLostFuture()
     {
-        unsafe { FFI.WGPUDevice.wgpuDeviceGetLostFuture(Native.GetPtr()); }
+        unsafe
+        {
+            // TODO
+            _ = FFI.WGPUDevice.wgpuDeviceGetLostFuture(Native.GetPtr());
+        }
     }
-    public void GetLimits()
+    public WebGPULimits GetLimits()
     {
-        unsafe { FFI.WGPUDevice.wgpuDeviceGetLimits(Native.GetPtr()); }
+        unsafe
+        {
+            FFI.WGPULimits ffiLimits = default;
+            FFI.WGPUDevice.wgpuDeviceGetLimits(Native.GetPtr(), &ffiLimits);
+            return WebGPULimits.ToW(ffiLimits);
+        }
     }
-    public void HasFeature()
+    public bool HasFeature(WebGPUFeatureName webGPUFeatureName)
     {
-        unsafe { FFI.WGPUDevice.wgpuDeviceHasFeature(Native.GetPtr()); }
+        unsafe { return (bool)FFI.WGPUDevice.wgpuDeviceHasFeature(Native.GetPtr(), webGPUFeatureName.ToF()); }
     }
-    public void GetFeatures()
+    public WebGPUFeatureName[] GetFeatures()
     {
-        unsafe { FFI.WGPUDevice.wgpuDeviceGetFeatures(Native.GetPtr()); }
+        unsafe
+        {
+            FFI.WGPUSupportedFeatures features = default;
+            FFI.WGPUDevice.wgpuDeviceGetFeatures(Native.GetPtr(), &features);
+            var managedFeatuers = new ReadOnlySpan<FFI.WGPUFeatureName>(features.Features, (int)features.FeaturesCount).ToArray().Select(WebGPUFeatureNameUtil.ToW).ToArray();
+            FFI.WGPUSupportedFeatures.FreeMembers(ref features);
+            return managedFeatuers;
+        }
     }
     public void GetAdapterInfo()
     {
-        unsafe { FFI.WGPUDevice.wgpuDeviceGetAdapterInfo(Native.GetPtr()); }
+        unsafe
+        {
+            FFI.WGPUAdapterInfo ffi = default;
+            FFI.WGPUDevice.wgpuDeviceGetAdapterInfo(Native.GetPtr(), &ffi);
+            var amanaged = WebGPUAdapterInfo. ffi
+            FFI.WGPUAdapterInfo.FreeMembers(ref ffi);
+            return ;
+        }
     }
-    // public WebGPUQueue GetQueue()
-    // {
-    //     unsafe { return new(new(FFI.WGPUDevice.wgpuDeviceGetQueue(Native.GetPtr()))); }
-    // }
+    public WebGPUQueue GetQueue()
+    {
+        unsafe { return new(new(FFI.WGPUDevice.wgpuDeviceGetQueue(Native.GetPtr()))); }
+    }
     public void PushErrorScope(WebGPUErrorFilter errorFilter)
     {
         unsafe

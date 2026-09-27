@@ -74,21 +74,7 @@ public partial class WebGPUAdapter : IDisposable
             {
                 if (status is FFI.WGPUStatus.Success)
                 {
-                    var adapterInfo = new WebGPUAdapterInfo
-                    {
-                        Vendor = adapterInfoFfi.Vendor.ReadStringView(),
-                        Architecture = adapterInfoFfi.Architecture.ReadStringView(),
-                        Device = adapterInfoFfi.Device.ReadStringView(),
-                        Description = adapterInfoFfi.Description.ReadStringView(),
-                        BackendType = adapterInfoFfi.BackendType.ToW(),
-                        AdapterType = adapterInfoFfi.AdapterType.ToW(),
-                        VendorId = adapterInfoFfi.VendorId,
-                        DeviceId = adapterInfoFfi.DeviceId,
-                        SubgroupMinSize = adapterInfoFfi.SubgroupMinSize,
-                        SubgroupMaxSize = adapterInfoFfi.SubgroupMaxSize
-                    };
-                    return adapterInfo;
-
+                    return WebGPUAdapterInfo.ToW(adapterInfoFfi);
                 }
                 else { return null; }
             }
@@ -165,6 +151,23 @@ public class WebGPUAdapterInfo
     public uint DeviceId { get; internal set; }
     public uint SubgroupMinSize { get; internal set; }
     public uint SubgroupMaxSize { get; internal set; }
+
+    internal static  WebGPUAdapterInfo ToW(FFI.WGPUAdapterInfo adapterInfoFfi)
+    {
+        return new WebGPUAdapterInfo
+        {
+            Vendor = adapterInfoFfi.Vendor.ReadStringView(),
+            Architecture = adapterInfoFfi.Architecture.ReadStringView(),
+            Device = adapterInfoFfi.Device.ReadStringView(),
+            Description = adapterInfoFfi.Description.ReadStringView(),
+            BackendType = adapterInfoFfi.BackendType.ToW(),
+            AdapterType = adapterInfoFfi.AdapterType.ToW(),
+            VendorId = adapterInfoFfi.VendorId,
+            DeviceId = adapterInfoFfi.DeviceId,
+            SubgroupMinSize = adapterInfoFfi.SubgroupMinSize,
+            SubgroupMaxSize = adapterInfoFfi.SubgroupMaxSize
+        };
+    }
 }
 
 [FFINote(typeof(FFI.WGPUDeviceDescriptor))]

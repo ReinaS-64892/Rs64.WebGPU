@@ -17,8 +17,26 @@ public class WebGPURenderPipeline : IDisposable
 [FFINote(typeof(FFI.WGPURenderPipelineDescriptor))]
 public class WebGPURenderPipelineDescriptor
 {
+    public string Label = "";
+    public WGPUPipelineLayout? Layout;
+    public WebGPUVertexState Vertex;
+    public WGPUPrimitiveState Primitive;
+    public WebGPUDepthStencilState? DepthStencil;
+    public WebGPUMultisampleState Multisample;
+    public WebGPUFragmentState? Fragment;
+
     internal FFI.WGPURenderPipelineDescriptor ToF(FFIMemoryManager ffiMem)
     {
-        throw new NotImplementedException();
+        // TODO 
+        return new()
+        {
+            Label = ffiMem.AllocateString(Label),
+            Layout = Layout,
+            Vertex = Vertex,
+            Primitive = Primitive,
+            DepthStencil = DepthStencil,
+            Multisample = Multisample,
+            Fragment = Fragment,
+        };
     }
 }
