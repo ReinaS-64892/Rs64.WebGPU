@@ -5,6 +5,8 @@
     <ImplicitUsings>disable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+
+     <DefineConstants>$(DefineConstants);RS64_WEBGPU_BACKEND_WGPU_NATIVE</DefineConstants>
   </PropertyGroup>
 
 </Project>

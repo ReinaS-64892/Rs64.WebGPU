@@ -128,8 +128,7 @@ public const string {LIB_NAME_DEF} = "wgpu_native";
 #elif RS64_WEBGPU_BACKEND_DAWN
 public const string {LIB_NAME_DEF} = "webgpu_dawn";
 #else
-// fallback is wgpu-native
-public const string {LIB_NAME_DEF} = "wgpu_native";
+public const string {LIB_NAME_DEF} = "PLACE_SELECT_A_BACKEND";
 #endif
 """
 );
