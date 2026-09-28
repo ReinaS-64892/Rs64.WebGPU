@@ -331,6 +331,15 @@ public struct WebGPUColor
     public double G;
     public double B;
     public double A;
+    public WebGPUColor() { }
+    public WebGPUColor(double r, double g, double b, double a)
+    {
+        R = r;
+        G = g;
+        B = b;
+        A = a;
+    }
+
 
     internal FFI.WGPUColor ToF()
     {
