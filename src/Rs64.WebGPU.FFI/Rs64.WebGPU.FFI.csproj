@@ -5,8 +5,24 @@
     <ImplicitUsings>disable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
-
-     <DefineConstants>$(DefineConstants);RS64_WEBGPU_BACKEND_WGPU_NATIVE</DefineConstants>
   </PropertyGroup>
+
+	<PropertyGroup>
+		<!-- example $ dotnet build -p:Rs64WebGPUBackend=wgpu-native  -->
+		<!-- example $ dotnet build -p:Rs64WebGPUBackend=dawn  -->
+    <Rs64WebGPU-Backend Condition="'$(Rs64WebGPUBackend)'=='wgpu-native'">wgpu-native</Rs64WebGPU-Backend>
+    <Rs64WebGPU-Backend Condition="'$(Rs64WebGPUBackend)'=='dawn'">dawn</Rs64WebGPU-Backend>
+    <Rs64WebGPU-Backend Condition="'$(Rs64WebGPU-Backend)'==''">wgpu-native</Rs64WebGPU-Backend>
+	</PropertyGroup>
+
+	<PropertyGroup>
+     <DefineConstants Condition="'$(Rs64WebGPU-Backend)'=='wgpu-native'">$(DefineConstants);RS64_WEBGPU_BACKEND_WGPU_NATIVE</DefineConstants>
+     <DefineConstants Condition="'$(Rs64WebGPU-Backend)'=='dawn'">$(DefineConstants);RS64_WEBGPU_BACKEND_DAWN</DefineConstants>
+	</PropertyGroup>
+  
+  <ItemGroup>
+    <ProjectReference Include="..\Rs64.WebGPU.Binary.Dawn\Rs64.WebGPU.Binary.Dawn.csproj"  Condition="'$(Rs64WebGPU-Backend)'=='wgpu-native'" />
+    <ProjectReference Include="..\Rs64.WebGPU.Binary.wgpu-native\Rs64.WebGPU.Binary.wgpu-native.csproj" Condition="'$(Rs64WebGPU-Backend)'=='dawn'" />
+  </ItemGroup>
 
 </Project>

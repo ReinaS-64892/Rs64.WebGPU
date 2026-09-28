@@ -1,5 +1,7 @@
 <Solution>
   <Folder Name="/src/">
+    <Project Path="src/Rs64.WebGPU.Binary.wgpu-native/Rs64.WebGPU.Binary.wgpu-native.csproj" />
+    <Project Path="src/Rs64.WebGPU.Binary.Dawn/Rs64.WebGPU.Binary.Dawn.csproj" />
     <Project Path="src/Rs64.WebGPU.BindingGenerator/Rs64.WebGPU.BindingGenerator.csproj" />
     <Project Path="src/Rs64.WebGPU/Rs64.WebGPU.csproj" />
     <Project Path="src/Rs64.WebGPU.FFI/Rs64.WebGPU.FFI.csproj" />    

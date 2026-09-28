@@ -1,4 +1,5 @@
 **/artifact
 src/Rs64.WebGPU.FFI/GeneratedCode
 src/Rs64.WebGPU/GeneratedCode
+src/Rs64.WebGPU.Binary.Dawn/binary
 .vscode
