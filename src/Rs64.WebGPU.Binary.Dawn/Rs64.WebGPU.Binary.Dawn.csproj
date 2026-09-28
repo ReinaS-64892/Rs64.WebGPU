@@ -9,7 +9,8 @@
   <ItemGroup>
     <None Include = "binary/libwebgpu_dawn.so">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-      <Link>runtimes/linux-x64/native/libwebgpu_dawn.so</Link>
+      <!-- <Link>runtimes/linux-x64/native/libwebgpu_dawn.so</Link> -->
+      <Link>libwebgpu_dawn.so</Link>
     </None>
   </ItemGroup>
 

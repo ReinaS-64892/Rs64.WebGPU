@@ -10,7 +10,8 @@
   <ItemGroup>
     <None Include = "../../lib/wgpu-native/target/debug/libwgpu_native.so">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-      <Link>runtimes/linux-x64/native/libwgpu_native.so</Link>
+      <!-- <Link>runtimes/linux-x64/native/libwgpu_native.so</Link> -->
+      <Link>libwgpu_native.so</Link>
     </None>
   </ItemGroup>
 

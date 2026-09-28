@@ -21,8 +21,8 @@
 	</PropertyGroup>
   
   <ItemGroup>
-    <ProjectReference Include="..\Rs64.WebGPU.Binary.Dawn\Rs64.WebGPU.Binary.Dawn.csproj"  Condition="'$(Rs64WebGPU-Backend)'=='wgpu-native'" />
-    <ProjectReference Include="..\Rs64.WebGPU.Binary.wgpu-native\Rs64.WebGPU.Binary.wgpu-native.csproj" Condition="'$(Rs64WebGPU-Backend)'=='dawn'" />
+    <ProjectReference Include="..\Rs64.WebGPU.Binary.wgpu-native\Rs64.WebGPU.Binary.wgpu-native.csproj" Condition="'$(Rs64WebGPU-Backend)'=='wgpu-native'" />
+    <ProjectReference Include="..\Rs64.WebGPU.Binary.Dawn\Rs64.WebGPU.Binary.Dawn.csproj"  Condition="'$(Rs64WebGPU-Backend)'=='dawn'" />
   </ItemGroup>
 
 </Project>
