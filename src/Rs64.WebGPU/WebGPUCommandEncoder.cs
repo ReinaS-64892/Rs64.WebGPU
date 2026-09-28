@@ -338,7 +338,7 @@ public class WebGPUCommandBufferDescriptor
 }
 
 [FFINote(typeof(FFI.WGPUCommandBuffer))]
-public class WebGPUCommandBuffer
+public class WebGPUCommandBuffer : IDisposable
 {
     internal WGPUObjectHolder<FFI.WGPUCommandBuffer> Native { get; }
     internal WebGPUCommandBuffer(WGPUObjectHolder<FFI.WGPUCommandBuffer> holder) { Native = holder; }
