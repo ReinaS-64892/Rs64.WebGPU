@@ -12,7 +12,14 @@ public class WebGPUSampler : IDisposable
     internal WebGPUSampler(WGPUObjectHolder<FFI.WGPUSampler> holder) { Native = holder; }
     public void Dispose() { Native.Dispose(); }
 
-    //TODO : 
+    public void SetLabel(string label)
+    {
+        unsafe
+        {
+            using var ffiMem = new FFIMemoryManager(stackalloc byte[16]);
+            FFI.WGPUSampler.wgpuSamplerSetLabel(Native.GetPtr(), ffiMem.AllocateString(label));
+        }
+    }
 }
 
 [FFINote(typeof(FFI.WGPUSamplerDescriptor))]

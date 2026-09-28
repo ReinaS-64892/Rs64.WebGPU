@@ -2,6 +2,8 @@
 // SPDX-License-Identifier: MPL-2.0
 
 using System;
+using System.Runtime.CompilerServices;
+using System.Threading.Tasks;
 
 namespace Rs64.WebGPU;
 
@@ -11,10 +13,111 @@ public class WebGPUShaderModule : IDisposable
     internal WGPUObjectHolder<FFI.WGPUShaderModule> Native { get; }
     internal WebGPUShaderModule(WGPUObjectHolder<FFI.WGPUShaderModule> holder) { Native = holder; }
     public void Dispose() { Native.Dispose(); }
-    //TODO : 
+    public Task<WebGPUCompilationInfo> GetCompilationInfo()
+    {
+        var taskCompletionSource = new TaskCompletionSource<WebGPUCompilationInfo>();
+        unsafe
+        {
+            var cb = new FFI.WGPUCompilationInfoCallbackInfo()
+            {
+                CallBackMode = FFI.WGPUCallbackMode.AllowSpontaneous,
+                WGPUCompilationInfoCallback = &FFI.WGPUCompilationInfoCallbackManagedWrapper.CallBack,
+                UserData1 = FFI.WGPUCompilationInfoCallbackManagedWrapper.CreateUserData(new CompilationInfoCallback(taskCompletionSource)),
+            };
+            _ = FFI.WGPUShaderModule.wgpuShaderModuleGetCompilationInfo(Native.GetPtr(), cb);
+        }
+        return taskCompletionSource.Task;
+    }
+    public void SetLabel(string label)
+    {
+        unsafe
+        {
+            using var ffiMem = new FFIMemoryManager(stackalloc byte[16]);
+            FFI.WGPUShaderModule.wgpuShaderModuleSetLabel(Native.GetPtr(), ffiMem.AllocateString(label));
+        }
+    }
 
+    private class CompilationInfoCallback : FFI.IWGPUCompilationInfoCallback
+    {
+        private TaskCompletionSource<WebGPUCompilationInfo> Task;
+
+        public CompilationInfoCallback(TaskCompletionSource<WebGPUCompilationInfo> taskCompletionSource)
+        {
+            Task = taskCompletionSource;
+        }
+
+        public unsafe void CallBack(
+            FFI.WGPUCompilationInfoRequestStatus status,
+
+            [FFI.WebGPUPassedWithOwnership(false)]
+            [FFI.WebGPUImmutablePointer]
+            FFI.WGPUCompilationInfo* compilation_info
+        )
+        {
+            switch (status)
+            {
+                default: break;
+
+                case FFI.WGPUCompilationInfoRequestStatus.Success:
+                    {
+
+                        Task.SetResult(WebGPUCompilationInfo.ToW(ref Unsafe.AsRef<FFI.WGPUCompilationInfo>(compilation_info)));
+                        return;
+                    }
+                case FFI.WGPUCompilationInfoRequestStatus.CallbackCancelled:
+                    {
+                        Console.WriteLine("CompilationInfoCallback CallbackCancelled");
+                        // TODO
+                        Task.SetCanceled();
+                        return;
+                    }
+            }
+            throw new InvalidCallBackStatusException("CompilationInfoCallback");
+        }
+    }
 }
+[FFINote(typeof(FFI.WGPUCompilationInfo))]
+public class WebGPUCompilationInfo
+{
+    public required WebGPUCompilationMessage[] Messages;
 
+    internal static unsafe WebGPUCompilationInfo ToW(ref FFI.WGPUCompilationInfo ffi)
+    {
+        var len = (int)ffi.MessagesCount;
+        var ptr = ffi.Messages;
+        var managed = new WebGPUCompilationMessage[len];
+        for (var i = 0; len > i; i += 1)
+        {
+            managed[i] = WebGPUCompilationMessage.ToW(ptr[i]);
+        }
+        return new WebGPUCompilationInfo()
+        {
+            Messages = managed,
+        };
+    }
+}
+[FFINote(typeof(FFI.WGPUCompilationMessage))]
+public class WebGPUCompilationMessage
+{
+    public required string Message;
+    public WebGPUCompilationMessageType Type;
+    public ulong LineNum;
+    public ulong LinePos;
+    public ulong Offset;
+    public ulong Length;
+    internal static WebGPUCompilationMessage ToW(FFI.WGPUCompilationMessage wGPUCompilationMessage)
+    {
+        return new()
+        {
+            Message = wGPUCompilationMessage.Message.ReadStringView() ?? "",
+            Type = wGPUCompilationMessage.Type.ToW(),
+            LineNum = wGPUCompilationMessage.LineNum,
+            LinePos = wGPUCompilationMessage.LinePos,
+            Offset = wGPUCompilationMessage.Offset,
+            Length = wGPUCompilationMessage.Length,
+        };
+    }
+}
 
 [FFINote(typeof(FFI.WGPUShaderModuleDescriptor))]
 public abstract class WebGPUShaderModuleDescriptor

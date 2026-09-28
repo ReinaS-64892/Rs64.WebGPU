@@ -709,6 +709,16 @@ public const string {LIB_NAME_DEF} = "wgpu_native";
                 case "compare_function":
                 case "texture_dimension":
                 case "index_format":
+                case "blend_operation":
+                case "blend_factor":
+                case "stencil_operation":
+                case "primitive_topology":
+                case "front_face":
+                case "cull_mode":
+                case "vertex_step_mode":
+                case "vertex_format":
+                case "compilation_message_type":
+
 
                 case "error_filter":
                 case "error_type":
@@ -801,6 +811,7 @@ namespace Rs64.WebGPU;
                 case "shader_stage":
                 case "buffer_usage":
                 case "map_mode":
+                case "color_write_mask":
                     {
                         var strBuild = new StringBuilder();
 

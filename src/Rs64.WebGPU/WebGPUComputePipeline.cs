@@ -103,13 +103,7 @@ public class WebGPUComputeState
         var constants = ffiMem.stackArea.Allocate<FFI.WGPUConstantEntry>(Constants.Length);
         for (var i = 0; Constants.Length > i; i += 1)
         {
-            var mEntry = Constants[i];
-
-            constants[i] = new()
-            {
-                Key = ffiMem.AllocateString(mEntry.Key),
-                Value = mEntry.Value,
-            };
+            constants[i] = Constants[i].ToF(ffiMem);
         }
         return new()
         {
@@ -126,4 +120,13 @@ public class WebGPUConstantEntry
 {
     public string Key = "";
     public double Value;
+
+    internal FFI.WGPUConstantEntry ToF(FFIMemoryManager ffiMem)
+    {
+        return new()
+        {
+            Key = ffiMem.AllocateString(Key),
+            Value = Value,
+        };
+    }
 }

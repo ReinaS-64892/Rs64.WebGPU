@@ -306,13 +306,6 @@ public class WebGPURenderPassColorAttachment
     }
 }
 
-[FFINote(typeof(FFI.WGPUTextureView))]
-public class WebGPUTextureView : IDisposable
-{
-    internal WGPUObjectHolder<FFI.WGPUTextureView> Native { get; }
-    internal WebGPUTextureView(WGPUObjectHolder<FFI.WGPUTextureView> holder) { Native = holder; }
-    public void Dispose() { Native.Dispose(); }
-}
 
 [FFINote(typeof(FFI.WGPURenderPassDepthStencilAttachment))]
 public class WebGPURenderPassDepthStencilAttachment
