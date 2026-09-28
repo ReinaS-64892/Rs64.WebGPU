@@ -14,6 +14,8 @@ where TWGPUObject : unmanaged, FFI.IWGPUObject<TWGPUObject>
     IntPtr _ptr = IntPtr.Zero;
     public WGPUObjectHolder(TWGPUObject* ptr)
     {
+        if (ptr is null) { throw new InvalidObjectPointerException(); }
+        
         _ptr = (nint)ptr;
     }
 
