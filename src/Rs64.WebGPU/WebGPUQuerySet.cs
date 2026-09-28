@@ -12,7 +12,26 @@ public class WebGPUQuerySet : IDisposable
     internal WebGPUQuerySet(WGPUObjectHolder<FFI.WGPUQuerySet> holder) { Native = holder; }
     public void Dispose() { Native.Dispose(); }
 
-    // TODO 
+    public void SetLabel(string label)
+    {
+        unsafe
+        {
+            using var ffiMem = new FFIMemoryManager(stackalloc byte[8]);
+            FFI.WGPUQuerySet.wgpuQuerySetSetLabel(Native.GetPtr(), ffiMem.AllocateString(label));
+        }
+    }
+    public WebGPUQueryType GetQuerySetType()
+    {
+        unsafe { return FFI.WGPUQuerySet.wgpuQuerySetGetType(Native.GetPtr()).ToW(); }
+    }
+    public uint GetCount()
+    {
+        unsafe { return FFI.WGPUQuerySet.wgpuQuerySetGetCount(Native.GetPtr()); }
+    }
+    public void Destroy()
+    {
+        unsafe { FFI.WGPUQuerySet.wgpuQuerySetDestroy(Native.GetPtr()); }
+    }
 }
 
 [FFINote(typeof(FFI.WGPUQuerySetDescriptor))]

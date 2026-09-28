@@ -15,6 +15,8 @@ internal static class WebGPUStringUtil
         {
             if (stringView.StringData is not null && stringView.Length is not 0)
             {
+                if (stringView.Length is 0) { return ""; }
+                
                 if (stringView.Length == FFI.Webgpu.WGPU_STRLEN)
                 {
                     return Marshal.PtrToStringUTF8((nint)stringView.StringData);

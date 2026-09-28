@@ -358,7 +358,8 @@ public class WebGPUDevice : IDisposable
                     }
                 case FFI.WGPUPopErrorScopeStatus.CallbackCancelled:
                     {
-                        Console.WriteLine("PopErrorScopeCallback CallbackCancelled : " + managedMessage);//TODO
+                        Console.WriteLine("PopErrorScopeCallback CallbackCancelled : " + managedMessage);
+                        // TODO
                         Task.SetCanceled();
                         return;
                     }

@@ -13,7 +13,22 @@ public class WebGPUComputePipeline : IDisposable
     internal WebGPUComputePipeline(WGPUObjectHolder<FFI.WGPUComputePipeline> holder) { Native = holder; }
     public void Dispose() { Native.Dispose(); }
 
-    // TODO 
+    public WebGPUBindGroupLayout GetBindGroupLayout(uint groupIndex)
+    {
+        unsafe
+        {
+            return new(new(FFI.WGPUComputePipeline.wgpuComputePipelineGetBindGroupLayout(Native.GetPtr(), groupIndex)));
+        }
+    }
+    public void SetLabel(string label)
+    {
+        unsafe
+        {
+            using var ffiMem = new FFIMemoryManager(stackalloc byte[8]);
+            FFI.WGPUComputePipeline.wgpuComputePipelineSetLabel(Native.GetPtr(), ffiMem.AllocateString(label));
+        }
+    }
+
 }
 
 [FFINote(typeof(FFI.WGPUComputePipelineDescriptor))]
@@ -40,8 +55,14 @@ public class WebGPUPipelineLayout : IDisposable
     internal WGPUObjectHolder<FFI.WGPUPipelineLayout> Native { get; }
     internal WebGPUPipelineLayout(WGPUObjectHolder<FFI.WGPUPipelineLayout> holder) { Native = holder; }
     public void Dispose() { Native.Dispose(); }
-
-    // TODO 
+    public void SetLabel(string label)
+    {
+        unsafe
+        {
+            using var ffiMem = new FFIMemoryManager(stackalloc byte[8]);
+            FFI.WGPUPipelineLayout.wgpuPipelineLayoutSetLabel(Native.GetPtr(), ffiMem.AllocateString(label));
+        }
+    }
 
 }
 

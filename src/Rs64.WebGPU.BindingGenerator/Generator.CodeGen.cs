@@ -708,6 +708,7 @@ public const string {LIB_NAME_DEF} = "wgpu_native";
                 case "mipmap_filter_mode":
                 case "compare_function":
                 case "texture_dimension":
+                case "index_format":
 
                 case "error_filter":
                 case "error_type":

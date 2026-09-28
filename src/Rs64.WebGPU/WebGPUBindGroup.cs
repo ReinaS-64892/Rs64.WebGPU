@@ -72,12 +72,12 @@ public class WebGPUBindGroupEntry
                 }
             case BindSampler sampler:
                 {
-                    entry.Sampler = sampler.Native.GetPtr();
+                    entry.Sampler = sampler.Sampler.Native.GetPtr();
                     break;
                 }
             case BindTextureView textureView:
                 {
-                    entry.TextureView = textureView.Native.GetPtr();
+                    entry.TextureView = textureView.TextureView.Native.GetPtr();
                     break;
                 }
         }
@@ -91,7 +91,14 @@ public class WebGPUBindGroupLayout : IDisposable
     internal WebGPUBindGroupLayout(WGPUObjectHolder<FFI.WGPUBindGroupLayout> holder) { Native = holder; }
     public void Dispose() { Native.Dispose(); }
 
-    // TODO 
+    public void SetLabel(string label)
+    {
+        unsafe
+        {
+            using var ffiMem = new FFIMemoryManager(stackalloc byte[8]);
+            FFI.WGPUBindGroupLayout.wgpuBindGroupLayoutSetLabel(Native.GetPtr(), ffiMem.AllocateString(label));
+        }
+    }
 }
 [FFINote(typeof(FFI.WGPUBindGroup))]
 public class WebGPUBindGroup : IDisposable

@@ -343,8 +343,14 @@ public class WebGPUCommandBuffer
     internal WGPUObjectHolder<FFI.WGPUCommandBuffer> Native { get; }
     internal WebGPUCommandBuffer(WGPUObjectHolder<FFI.WGPUCommandBuffer> holder) { Native = holder; }
     public void Dispose() { Native.Dispose(); }
-
-    // TODO 
+    public void SetLabel(string label)
+    {
+        unsafe
+        {
+            using var ffiMem = new FFIMemoryManager(stackalloc byte[8]);
+            FFI.WGPUCommandBuffer.wgpuCommandBufferSetLabel(Native.GetPtr(), ffiMem.AllocateString(label));
+        }
+    }
 }
 
 [FFINote(typeof(FFI.WGPUCommandEncoderDescriptor))]

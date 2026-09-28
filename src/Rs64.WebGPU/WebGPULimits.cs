@@ -93,8 +93,7 @@ public class WebGPULimits
                     default: break;
                     case FFI.WGPUSType.CompatibilityModeLimits:
                         {
-                            //TODO : 実装 !!!
-                            //TODO : ログの仕組み!!!
+                            //TODO : 実装 !!! ログの仕組み!!!
                             System.Console.WriteLine("have CompatibilityModeLimits !");
                             break;
                         }
