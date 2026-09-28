@@ -10,7 +10,11 @@ public class WebGPUComputePassEncoder : IDisposable
 {
     internal WGPUObjectHolder<FFI.WGPUComputePassEncoder> Native { get; }
     internal WebGPUComputePassEncoder(WGPUObjectHolder<FFI.WGPUComputePassEncoder> holder) { Native = holder; }
-    public void Dispose() { Native.Dispose(); }
+    public void Dispose()
+    {
+        End();
+        Native.Dispose();
+    }
 
     public void InsertDebugMarker(string markerLabel)
     {
@@ -72,7 +76,7 @@ public class WebGPUComputePassEncoder : IDisposable
             FFI.WGPUComputePassEncoder.wgpuComputePassEncoderDispatchWorkgroupsIndirect(Native.GetPtr(), buffer.Native.GetPtr(), offset);
         }
     }
-    public void End()
+    internal void End()
     {
         unsafe { FFI.WGPUComputePassEncoder.wgpuComputePassEncoderEnd(Native.GetPtr()); }
     }
