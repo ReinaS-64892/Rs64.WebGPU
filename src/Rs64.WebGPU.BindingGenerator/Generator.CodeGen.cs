@@ -742,7 +742,7 @@ namespace Rs64.WebGPU;
                         {
                             if (e is null) { continue; }
                             if (e.Name is "undefined") { haveUndefined = true; continue; }
-                            if (e.Name is "binding_not_used") { haveUndefined = true; continue; }
+                            if (e.Name is "binding_not_used") { continue; }
 
 
                             WriteDocument(strBuild, e.Document);
@@ -767,7 +767,7 @@ namespace Rs64.WebGPU;
                             var ffiEntryEnumLiteral = ffiTypeName + "." + enumEntryName;
                             var EntryEnumLiteral = typeName + "." + enumEntryName;
                             if (e.Name is "undefined") { EntryEnumLiteral = "null"; }
-                            if (e.Name is "binding_not_used") { EntryEnumLiteral = "null"; }
+                            if (e.Name is "binding_not_used") { continue; }
                             strBuild.AppendLine($"case {EntryEnumLiteral}: return {ffiEntryEnumLiteral};");
                         }
                         strBuild.AppendLine("}");
@@ -788,6 +788,7 @@ namespace Rs64.WebGPU;
                             var ffiEntryEnumLiteral = ffiTypeName + "." + enumEntryName;
                             var EntryEnumLiteral = typeName + "." + enumEntryName;
                             if (e.Name is "undefined") { EntryEnumLiteral = "null"; }
+                            if (e.Name is "binding_not_used") { EntryEnumLiteral = "null"; }
                             strBuild.AppendLine($"case {ffiEntryEnumLiteral}: return {EntryEnumLiteral};");
                         }
                         strBuild.AppendLine("}");
