@@ -18,25 +18,79 @@ public class WebGPURenderPipeline : IDisposable
 public class WebGPURenderPipelineDescriptor
 {
     public string Label = "";
-    public WGPUPipelineLayout? Layout;
-    public WebGPUVertexState Vertex;
-    public WGPUPrimitiveState Primitive;
+    public WebGPUPipelineLayout? Layout;
+    public WebGPUVertexState Vertex = new();
+    public WebGPUPrimitiveState Primitive = new();
     public WebGPUDepthStencilState? DepthStencil;
-    public WebGPUMultisampleState Multisample;
+    public WebGPUMultisampleState Multisample = new();
     public WebGPUFragmentState? Fragment;
 
     internal FFI.WGPURenderPipelineDescriptor ToF(FFIMemoryManager ffiMem)
     {
-        // TODO 
-        return new()
+        unsafe
         {
-            Label = ffiMem.AllocateString(Label),
-            Layout = Layout,
-            Vertex = Vertex,
-            Primitive = Primitive,
-            DepthStencil = DepthStencil,
-            Multisample = Multisample,
-            Fragment = Fragment,
-        };
+            var ds = DepthStencil is not null ? DepthStencil.ToF() : default;
+            var fs = Fragment is not null ? Fragment.ToF() : default;
+            return new()
+            {
+                Label = ffiMem.AllocateString(Label),
+                Layout = Layout is not null ? Layout.Native.GetPtr() : null,
+                Vertex = Vertex.ToF(),
+                Primitive = Primitive.ToF(),
+                DepthStencil = DepthStencil is not null ? &ds : null,
+                Multisample = Multisample.ToF(),
+                Fragment = Fragment is not null ? &fs : null,
+            };
+        }
+    }
+}
+
+[FFINote(typeof(FFI.WGPUFragmentState))]
+public class WebGPUFragmentState
+{
+    //TODO : 
+    internal FFI.WGPUFragmentState ToF()
+    {
+        throw new Exception();
+    }
+}
+
+[FFINote(typeof(FFI.WGPUMultisampleState))]
+public class WebGPUMultisampleState
+{
+    //TODO : 
+    internal FFI.WGPUMultisampleState ToF()
+    {
+        throw new Exception();
+    }
+}
+
+[FFINote(typeof(FFI.WGPUDepthStencilState))]
+public class WebGPUDepthStencilState
+{
+    //TODO : 
+    internal FFI.WGPUDepthStencilState ToF()
+    {
+        throw new Exception();
+    }
+}
+
+[FFINote(typeof(FFI.WGPUPrimitiveState))]
+public class WebGPUPrimitiveState
+{
+    //TODO : 
+    internal FFI.WGPUPrimitiveState ToF()
+    {
+        throw new Exception();
+    }
+}
+
+[FFINote(typeof(FFI.WGPUVertexState))]
+public class WebGPUVertexState
+{
+    //TODO : 
+    internal FFI.WGPUVertexState ToF()
+    {
+        throw new Exception();
     }
 }

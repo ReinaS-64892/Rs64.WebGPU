@@ -14,3 +14,21 @@ public class WebGPUQuerySet : IDisposable
 
     // TODO 
 }
+
+[FFINote(typeof(FFI.WGPUQuerySetDescriptor))]
+public class WebGPUQuerySetDescriptor
+{
+    public string Label = "";
+    public WebGPUQueryType Type;
+    public uint Count;
+
+    internal FFI.WGPUQuerySetDescriptor ToF(FFIMemoryManager ffiMem)
+    {
+        return new()
+        {
+            Label = ffiMem.AllocateString(Label),
+            Type = Type.ToF(),
+            Count = Count,
+        };
+    }
+}

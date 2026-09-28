@@ -25,35 +25,12 @@ public class WebGPUComputePipelineDescriptor
 
     internal unsafe FFI.WGPUComputePipelineDescriptor ToF(FFIMemoryManager ffiMem)
     {
-        FFI.WGPUComputePipelineDescriptor ffiComputePipelineDescriptor = new();
-
-        ffiComputePipelineDescriptor.Label = ffiMem.AllocateString(Label);
-
-        if (Layout is not null)
-            ffiComputePipelineDescriptor.Layout = Layout.Native.GetPtr();
-
-
-        FFI.WGPUComputeState computeState = new();
-
-        computeState.Module = Compute.Module.Native.GetPtr();
-        computeState.EntryPoint = ffiMem.AllocateString(Compute.EntryPoint);
-        var constants = ffiMem.stackArea.Allocate<FFI.WGPUConstantEntry>(Compute.Constants.Length);
-        for (var i = 0; Compute.Constants.Length > i; i += 1)
+        return new()
         {
-            var mEntry = Compute.Constants[i];
-
-            constants[i] = new()
-            {
-                Key = ffiMem.AllocateString(mEntry.Key),
-                Value = mEntry.Value,
-            };
-        }
-        computeState.ConstantsCount = (nuint)Compute.Constants.Length;
-        computeState.Constants = constants;
-
-        ffiComputePipelineDescriptor.Compute = computeState;
-
-        return ffiComputePipelineDescriptor;
+            Layout = Layout is not null ? Layout.Native.GetPtr() : null,
+            Label = ffiMem.AllocateString(Label),
+            Compute = Compute.ToF(ffiMem)
+        };
     }
 }
 
@@ -67,14 +44,60 @@ public class WebGPUPipelineLayout : IDisposable
     // TODO 
 
 }
+
+[FFINote(typeof(FFI.WGPUPipelineLayoutDescriptor))]
+public class WebGPUPipelineLayoutDescriptor
+{
+    public string Label = "";
+    public required WebGPUBindGroupLayout[] BindGroupLayouts;
+    public uint ImmediateSize = 0;
+
+    internal unsafe FFI.WGPUPipelineLayoutDescriptor ToF(FFIMemoryManager ffiMem)
+    {
+        var bindGroupLayoutsPtr = (FFI.WGPUBindGroupLayout**)ffiMem.stackArea.Allocate<IntPtr>(BindGroupLayouts.Length);
+        for (var i = 0; BindGroupLayouts.Length > i; i += 1)
+        {
+            bindGroupLayoutsPtr[i] = BindGroupLayouts[i].Native.GetPtr();
+        }
+        return new()
+        {
+            Label = ffiMem.AllocateString(Label),
+            BindGroupLayoutsCount = (nuint)BindGroupLayouts.Length,
+            BindGroupLayouts = bindGroupLayoutsPtr,
+            ImmediateSize = ImmediateSize,
+        };
+    }
+}
+
+
 [FFINote(typeof(FFI.WGPUComputeState))]
 public class WebGPUComputeState
 {
     public required WebGPUShaderModule Module;
-
     public string? EntryPoint = null;
-
     public WebGPUConstantEntry[] Constants = [];
+
+    internal unsafe FFI.WGPUComputeState ToF(FFIMemoryManager ffiMem)
+    {
+        var constants = ffiMem.stackArea.Allocate<FFI.WGPUConstantEntry>(Constants.Length);
+        for (var i = 0; Constants.Length > i; i += 1)
+        {
+            var mEntry = Constants[i];
+
+            constants[i] = new()
+            {
+                Key = ffiMem.AllocateString(mEntry.Key),
+                Value = mEntry.Value,
+            };
+        }
+        return new()
+        {
+            Module = Module.Native.GetPtr(),
+            EntryPoint = ffiMem.AllocateString(EntryPoint),
+            ConstantsCount = (nuint)Constants.Length,
+            Constants = constants
+        };
+    }
 }
 
 [FFINote(typeof(FFI.WGPUConstantEntry))]
@@ -82,12 +105,4 @@ public class WebGPUConstantEntry
 {
     public string Key = "";
     public double Value;
-}
-
-[FFINote(typeof(FFI.WGPUShaderModule))]
-public class WebGPUShaderModule : IDisposable
-{
-    internal WGPUObjectHolder<FFI.WGPUShaderModule> Native { get; }
-    internal WebGPUShaderModule(WGPUObjectHolder<FFI.WGPUShaderModule> holder) { Native = holder; }
-    public void Dispose() { Native.Dispose(); }
 }

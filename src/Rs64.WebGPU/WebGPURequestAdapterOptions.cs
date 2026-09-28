@@ -6,7 +6,9 @@ namespace Rs64.WebGPU;
 [FFINote(typeof(FFI.WGPURequestAdapterOptions))]
 public class WebGPURequestAdapterOptions
 {
-    public WebGPUFeatureLevel? FeatureLevel;
+    // Compatibility mode を使えるようにするべきか検討中のため ... 一旦隠します
+    internal WebGPUFeatureLevel? FeatureLevel;
+    // public WebGPUFeatureLevel? FeatureLevel;
     public WebGPUPowerPreference? PowerPreference;
     public bool ForceFallbackAdapter;
     public WebGPUBackendType? BackendType;

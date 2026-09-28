@@ -29,4 +29,23 @@ public class WebGPURenderBundleEncoderDescriptor
 
     public bool StencilReadOnly = false;
 
+    internal unsafe FFI.WGPURenderBundleEncoderDescriptor ToF(FFIMemoryManager ffiMem)
+    {
+        var colorFormats = ffiMem.AllocateArea<FFI.WGPUTextureFormat>(ColorFormats.Length);
+        for (var i = 0; ColorFormats.Length > i; i += 1)
+        {
+            colorFormats[i] = ColorFormats[i].ToF();
+        }
+        return new()
+        {
+            Label = ffiMem.AllocateString(Label),
+            ColorFormatsCount = (nuint)ColorFormats.Length,
+            ColorFormats = colorFormats,
+            DepthStencilFormat = DepthStencilFormat.ToF(),
+            SampleCount = SampleCount,
+            DepthReadOnly = (FFI.WGPUBool)DepthReadOnly,
+            StencilReadOnly = (FFI.WGPUBool)StencilReadOnly,
+        };
+    }
+
 }

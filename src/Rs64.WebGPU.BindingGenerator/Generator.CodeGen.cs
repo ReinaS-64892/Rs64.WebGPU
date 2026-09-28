@@ -703,6 +703,11 @@ public const string {LIB_NAME_DEF} = "wgpu_native";
                 case "store_op":
                 case "texture_aspect":
                 case "query_type":
+                case "address_mode":
+                case "filter_mode":
+                case "mipmap_filter_mode":
+                case "compare_function":
+                case "texture_dimension":
 
                 case "error_filter":
                 case "error_type":

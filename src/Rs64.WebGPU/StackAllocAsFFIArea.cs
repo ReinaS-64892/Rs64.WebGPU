@@ -41,14 +41,35 @@ internal unsafe ref struct FFIMemoryManager(Span<byte> bytes) : IDisposable
     public StackAllocAsFFIArea stackArea = new(bytes);
     public FFI.WGPUStringView AllocateString(string? str)
     {
+        if (str is null) { return FFI.WGPUStringView.Null; }
+        if (str.Length is 0) { return FFI.WGPUStringView.Empty; }
+
         var h = FFI.WGPUStringView.ConvertPinnedString(str);
         _holders.Add(h);
         return h.GetStringView();
     }
+    public T* AllocateArea<T>(int length = 1)
+    where T : unmanaged, allows ref struct
+    {
+        return stackArea.Allocate<T>(length);
+    }
+
+    public T* PinArray<T>(T[] target)
+    where T : unmanaged
+    {
+        var handle = GCHandle.Alloc(target);
+        _pinedExternals.Add(handle);
+        return (T*)handle.AddrOfPinnedObject();
+    }
+
     List<FFI.WGPUStringView.WGPUPinnedStringHolder> _holders = new();
+    List<GCHandle> _pinedExternals = new();
     public void Dispose()
     {
         foreach (var h in _holders) { h.Dispose(); }
         _holders.Clear();
+
+        foreach (var h in _pinedExternals) { h.Free(); }
+        _pinedExternals.Clear();
     }
 }

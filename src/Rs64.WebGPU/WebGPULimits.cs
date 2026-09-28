@@ -80,6 +80,27 @@ public class WebGPULimits
             MaxComputeWorkgroupsPerDimension = ffiLimits.MaxComputeWorkgroupsPerDimension == FFI.Webgpu.WGPU_LIMIT_U32_UNDEFINED ? null : ffiLimits.MaxComputeWorkgroupsPerDimension,
             MaxImmediateSize = ffiLimits.MaxImmediateSize == FFI.Webgpu.WGPU_LIMIT_U32_UNDEFINED ? null : ffiLimits.MaxImmediateSize
         };
+
+        unsafe
+        {
+            var exPtr = ffiLimits.NextInChain;
+            while (exPtr is not null)
+            {
+                var currentPtr = exPtr;
+                exPtr = exPtr->Next;
+                switch (currentPtr->StructType)
+                {
+                    default: break;
+                    case FFI.WGPUSType.CompatibilityModeLimits:
+                        {
+                            //TODO : 実装 !!!
+                            //TODO : ログの仕組み!!!
+                            System.Console.WriteLine("have CompatibilityModeLimits !");
+                            break;
+                        }
+                }
+            }
+        }
         return limits;
     }
     internal static FFI.WGPULimits ToF(WebGPULimits limits)

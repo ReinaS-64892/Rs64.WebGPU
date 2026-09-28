@@ -16,30 +16,12 @@ public partial class WebGPUAdapter : IDisposable
 
     public WebGPULimits GetLimits()
     {
-        FFI.WGPULimits ffiLimits = default;
         WebGPULimits limits;
         unsafe
         {
+            FFI.WGPULimits ffiLimits = default;
             FFI.WGPUAdapter.wgpuAdapterGetLimits(Native.GetPtr(), &ffiLimits);
             limits = WebGPULimits.ToW(ffiLimits);
-
-            var exPtr = ffiLimits.NextInChain;
-            while (exPtr is not null)
-            {
-                var currentPtr = exPtr;
-                exPtr = exPtr->Next;
-                switch (currentPtr->StructType)
-                {
-                    default: break;
-                    case FFI.WGPUSType.CompatibilityModeLimits:
-                        {
-                            //TODO : 実装 !!!
-                            //TODO : ログの仕組み!!!
-                            Console.WriteLine("have CompatibilityModeLimits !");
-                            break;
-                        }
-                }
-            }
         }
         return limits;
     }
@@ -152,7 +134,7 @@ public class WebGPUAdapterInfo
     public uint SubgroupMinSize { get; internal set; }
     public uint SubgroupMaxSize { get; internal set; }
 
-    internal static  WebGPUAdapterInfo ToW(FFI.WGPUAdapterInfo adapterInfoFfi)
+    internal static WebGPUAdapterInfo ToW(FFI.WGPUAdapterInfo adapterInfoFfi)
     {
         return new WebGPUAdapterInfo
         {

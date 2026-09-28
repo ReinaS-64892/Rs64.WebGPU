@@ -18,20 +18,9 @@ public class WebGPUDevice : IDisposable
     {
         unsafe
         {
-            FFI.WGPUBindGroupDescriptor ffiGroupDescriptor = new();
-            fixed (byte* labelPtr = FFI.WGPUStringView.ConvertWGPUStringParts(bindGroupDescriptor.Label, out var labelLength))
-            {
-                ffiGroupDescriptor.Label = new(labelPtr, labelLength);
-                ffiGroupDescriptor.Layout = bindGroupDescriptor.Layout.Native.GetPtr();
-                var ffiEntries = stackalloc FFI.WGPUBindGroupEntry[bindGroupDescriptor.Entries.Length];
-                for (var i = 0; bindGroupDescriptor.Entries.Length > i; i += 1)
-                {
-                    ffiEntries[i] = WebGPUBindGroupEntry.ToF(bindGroupDescriptor.Entries[i]);
-                }
-                ffiGroupDescriptor.EntriesCount = (nuint)bindGroupDescriptor.Entries.Length;
-                ffiGroupDescriptor.Entries = ffiEntries;
-                return new(new(FFI.WGPUDevice.wgpuDeviceCreateBindGroup(Native.GetPtr(), &ffiGroupDescriptor)));
-            }
+            using var ffiMem = new FFIMemoryManager(stackalloc byte[256]);
+            var ffi = bindGroupDescriptor.ToF(ffiMem);
+            return new(new(FFI.WGPUDevice.wgpuDeviceCreateBindGroup(Native.GetPtr(), &ffi)));
         }
     }
 
@@ -39,80 +28,44 @@ public class WebGPUDevice : IDisposable
     {
         unsafe
         {
-            FFI.WGPUBindGroupLayoutDescriptor ffiBindGroupLayoutDescriptor = default;
-            fixed (byte* labelPtr = FFI.WGPUStringView.ConvertWGPUStringParts(bindGroupLayoutDescriptor.Label, out var lLength))
-            {
-                ffiBindGroupLayoutDescriptor.Label = new(labelPtr, lLength);
-
-                var ffiEntries = stackalloc FFI.WGPUBindGroupLayoutEntry[bindGroupLayoutDescriptor.Entries.Length];
-                for (var i = 0; bindGroupLayoutDescriptor.Entries.Length > i; i += 1)
-                {
-                    ffiEntries[i] = WebGPUBindGroupLayoutEntry.ToF(bindGroupLayoutDescriptor.Entries[i]);
-                }
-                ffiBindGroupLayoutDescriptor.EntriesCount = (nuint)bindGroupLayoutDescriptor.Entries.Length;
-                ffiBindGroupLayoutDescriptor.Entries = ffiEntries;
-
-                return new(new(FFI.WGPUDevice.wgpuDeviceCreateBindGroupLayout(Native.GetPtr(), &ffiBindGroupLayoutDescriptor)));
-            }
+            using var ffiMem = new FFIMemoryManager(stackalloc byte[256]);
+            var ffi = bindGroupLayoutDescriptor.ToF(ffiMem);
+            return new(new(FFI.WGPUDevice.wgpuDeviceCreateBindGroupLayout(Native.GetPtr(), &ffi)));
         }
     }
     public WebGPUBuffer? CreateBuffer(WebGPUBufferDescriptor bufferDescriptor)
     {
         unsafe
         {
-            FFI.WGPUBufferDescriptor ffiBufferDescriptor = new();
-            fixed (byte* labelPtr = FFI.WGPUStringView.ConvertWGPUStringParts(bufferDescriptor.Label, out var lLength))
-            {
-                ffiBufferDescriptor.Label = new(labelPtr, lLength);
-                ffiBufferDescriptor.Usage = bufferDescriptor.Usage.ToF();
-                ffiBufferDescriptor.Size = bufferDescriptor.Size;
-                ffiBufferDescriptor.MappedAtCreation = (FFI.WGPUBool)false;
+            using var ffiMem = new FFIMemoryManager(stackalloc byte[256]);
+            var ffi = bufferDescriptor.ToF(ffiMem, false);
+            var buffer = FFI.WGPUDevice.wgpuDeviceCreateBuffer(Native.GetPtr(), &ffi);
 
-                var buffer = FFI.WGPUDevice.wgpuDeviceCreateBuffer(Native.GetPtr(), &ffiBufferDescriptor);
-                if (buffer is null) { return null; }
-                return new(new(buffer));
-            }
+            if (buffer is null) { return null; }
+            return new(new(buffer));
         }
     }
     public (WebGPUBuffer, WebGPUBuffer.Mapped)? CreateMappedBuffer(WebGPUBufferDescriptor bufferDescriptor)
     {
         unsafe
         {
-            FFI.WGPUBufferDescriptor ffiBufferDescriptor = new();
-            fixed (byte* labelPtr = FFI.WGPUStringView.ConvertWGPUStringParts(bufferDescriptor.Label, out var lLength))
-            {
-                ffiBufferDescriptor.Label = new(labelPtr, lLength);
-                ffiBufferDescriptor.Usage = bufferDescriptor.Usage.ToF();
-                ffiBufferDescriptor.Size = bufferDescriptor.Size;
-                ffiBufferDescriptor.MappedAtCreation = (FFI.WGPUBool)true;
+            using var ffiMem = new FFIMemoryManager(stackalloc byte[256]);
+            var ffi = bufferDescriptor.ToF(ffiMem, true);
+            var buffer = FFI.WGPUDevice.wgpuDeviceCreateBuffer(Native.GetPtr(), &ffi);
 
-                var buffer = FFI.WGPUDevice.wgpuDeviceCreateBuffer(Native.GetPtr(), &ffiBufferDescriptor);
-                if (buffer is null) { return null; }
-
-                var wrappedBuffer = new WebGPUBuffer(new(buffer));
-                return (wrappedBuffer, new(wrappedBuffer));
-            }
+            if (buffer is null) { return null; }
+            var wrappedBuffer = new WebGPUBuffer(new(buffer));
+            return (wrappedBuffer, new(wrappedBuffer));
         }
     }
     public WebGPUCommandEncoder CreateCommandEncoder(WebGPUCommandEncoderDescriptor? commandEncoderDescriptor = null)
     {
         unsafe
         {
-            if (commandEncoderDescriptor is not null)
-            {
-                fixed (byte* labelPtr = FFI.WGPUStringView.ConvertWGPUStringParts(commandEncoderDescriptor.Label, out var length))
-                {
-                    FFI.WGPUCommandEncoderDescriptor ffiCommandEncoderDescriptor = new()
-                    {
-                        Label = new(labelPtr, length)
-                    };
-                    return new(new(FFI.WGPUDevice.wgpuDeviceCreateCommandEncoder(Native.GetPtr(), &ffiCommandEncoderDescriptor)));
-                }
-            }
-            else
-            {
-                return new(new(FFI.WGPUDevice.wgpuDeviceCreateCommandEncoder(Native.GetPtr(), null)));
-            }
+            using var ffiMem = new FFIMemoryManager(stackalloc byte[32]);
+            var ffi = commandEncoderDescriptor is not null ? commandEncoderDescriptor.ToF(ffiMem) : default;
+            var ptr = commandEncoderDescriptor is not null ? &ffi : null;
+            return new(new(FFI.WGPUDevice.wgpuDeviceCreateCommandEncoder(Native.GetPtr(), ptr)));
         }
     }
     public WebGPUComputePipeline CreateComputePipeline(WebGPUComputePipelineDescriptor computePipelineDescriptor)
@@ -120,9 +73,8 @@ public class WebGPUDevice : IDisposable
         unsafe
         {
             using var ffiMem = new FFIMemoryManager(stackalloc byte[256]);
-            FFI.WGPUComputePipelineDescriptor ffiComputePipelineDescriptor = computePipelineDescriptor.ToF(ffiMem);
-
-            return new WebGPUComputePipeline(new(FFI.WGPUDevice.wgpuDeviceCreateComputePipeline(Native.GetPtr(), &ffiComputePipelineDescriptor)));
+            var ffi = computePipelineDescriptor.ToF(ffiMem);
+            return new(new(FFI.WGPUDevice.wgpuDeviceCreateComputePipeline(Native.GetPtr(), &ffi)));
         }
     }
     public Task<WebGPUComputePipeline> CreateComputePipelineAsync(WebGPUComputePipelineDescriptor computePipelineDescriptor)
@@ -131,7 +83,7 @@ public class WebGPUDevice : IDisposable
         unsafe
         {
             using var ffiMem = new FFIMemoryManager(stackalloc byte[256]);
-            FFI.WGPUCreateComputePipelineAsyncCallbackInfo callbackInfo = new()
+            var ffiCb = new FFI.WGPUCreateComputePipelineAsyncCallbackInfo()
             {
                 CallBackMode = FFI.WGPUCallbackMode.AllowSpontaneous,
                 WGPUCreateComputePipelineAsyncCallback = &FFI.WGPUCreateComputePipelineAsyncCallbackManagedWrapper.CallBack,
@@ -140,8 +92,8 @@ public class WebGPUDevice : IDisposable
                 )
             };
 
-            var ffiComputePipelineDescriptor = computePipelineDescriptor.ToF(ffiMem);
-            var _ = FFI.WGPUDevice.wgpuDeviceCreateComputePipelineAsync(Native.GetPtr(), &ffiComputePipelineDescriptor, callbackInfo);
+            var ffiDesc = computePipelineDescriptor.ToF(ffiMem);
+            var _ = FFI.WGPUDevice.wgpuDeviceCreateComputePipelineAsync(Native.GetPtr(), &ffiDesc, ffiCb);
         }
         return taskCompletionSource.Task;
     }
@@ -190,24 +142,17 @@ public class WebGPUDevice : IDisposable
         unsafe
         {
             using var ffiMem = new FFIMemoryManager(stackalloc byte[256]);
-            var ffiPipelineLayoutDescriptor = pipelineLayoutDescriptor.ToF(ffiMem);
-            return new(new(FFI.WGPUDevice.wgpuDeviceCreatePipelineLayout(Native.GetPtr(), &ffiPipelineLayoutDescriptor)));
+            var ffi = pipelineLayoutDescriptor.ToF(ffiMem);
+            return new(new(FFI.WGPUDevice.wgpuDeviceCreatePipelineLayout(Native.GetPtr(), &ffi)));
         }
     }
     public WebGPUQuerySet CreateQuerySet(WebGPUQuerySetDescriptor querySetDescriptor)
     {
         unsafe
         {
-            fixed (byte* lPtr = FFI.WGPUStringView.ConvertWGPUStringParts(querySetDescriptor.Label, out var ll))
-            {
-                FFI.WGPUQuerySetDescriptor ffiQuerySetDescriptor = new()
-                {
-                    Label = new(lPtr, ll),
-                    Type = querySetDescriptor.Type.ToF(),
-                    Count = querySetDescriptor.Count,
-                };
-                return new(new(FFI.WGPUDevice.wgpuDeviceCreateQuerySet(Native.GetPtr(), &ffiQuerySetDescriptor)));
-            }
+            using var ffiMem = new FFIMemoryManager(stackalloc byte[64]);
+            var ffi = querySetDescriptor.ToF(ffiMem);
+            return new(new(FFI.WGPUDevice.wgpuDeviceCreateQuerySet(Native.GetPtr(), &ffi)));
         }
     }
 
@@ -216,15 +161,15 @@ public class WebGPUDevice : IDisposable
         var taskCompletionSource = new TaskCompletionSource<WebGPURenderPipeline>();
         unsafe
         {
-            FFI.WGPUCreateRenderPipelineAsyncCallbackInfo callback = new()
+            var ffiCb = new FFI.WGPUCreateRenderPipelineAsyncCallbackInfo()
             {
                 CallBackMode = FFI.WGPUCallbackMode.AllowSpontaneous,
                 WGPUCreateRenderPipelineAsyncCallback = &FFI.WGPUCreateRenderPipelineAsyncCallbackManagedWrapper.CallBack,
                 UserData1 = FFI.WGPUCreateRenderPipelineAsyncCallbackManagedWrapper.CreateUserData(new CreateRenderPipelineAsyncCallback(taskCompletionSource))
             };
             using var ffiMem = new FFIMemoryManager(stackalloc byte[256]);
-            var ffiPipelineLayoutDescriptor = renderPipelineDescriptor.ToF(ffiMem);
-            var _ = FFI.WGPUDevice.wgpuDeviceCreateRenderPipelineAsync(Native.GetPtr(), &ffiPipelineLayoutDescriptor, callback);
+            var ffiDesc = renderPipelineDescriptor.ToF(ffiMem);
+            var _ = FFI.WGPUDevice.wgpuDeviceCreateRenderPipelineAsync(Native.GetPtr(), &ffiDesc, ffiCb);
         }
         return taskCompletionSource.Task;
     }
@@ -273,26 +218,9 @@ public class WebGPUDevice : IDisposable
     {
         unsafe
         {
-            fixed (byte* lPtr = FFI.WGPUStringView.ConvertWGPUStringParts(renderBundleEncoderDescriptor.Label, out var ll))
-            {
-                var colorFomarts = stackalloc FFI.WGPUTextureFormat[renderBundleEncoderDescriptor.ColorFormats.Length];
-                for (var i = 0; renderBundleEncoderDescriptor.ColorFormats.Length > i; i += 1)
-                {
-                    colorFomarts[i] = renderBundleEncoderDescriptor.ColorFormats[i].ToF();
-                }
-                FFI.WGPURenderBundleEncoderDescriptor ffirenderBundleEncoderDescriptor = new()
-                {
-                    Label = new(lPtr, ll),
-                    ColorFormatsCount = (nuint)renderBundleEncoderDescriptor.ColorFormats.Length,
-                    ColorFormats = colorFomarts,
-                    DepthStencilFormat = renderBundleEncoderDescriptor.DepthStencilFormat.ToF(),
-                    SampleCount = renderBundleEncoderDescriptor.SampleCount,
-                    DepthReadOnly = (FFI.WGPUBool)renderBundleEncoderDescriptor.DepthReadOnly,
-                    StencilReadOnly = (FFI.WGPUBool)renderBundleEncoderDescriptor.StencilReadOnly,
-                };
-
-                return new(new(FFI.WGPUDevice.wgpuDeviceCreateRenderBundleEncoder(Native.GetPtr(), &ffirenderBundleEncoderDescriptor)));
-            }
+            using var ffiMem = new FFIMemoryManager(stackalloc byte[256]);
+            var ffi = renderBundleEncoderDescriptor.ToF(ffiMem);
+            return new(new(FFI.WGPUDevice.wgpuDeviceCreateRenderBundleEncoder(Native.GetPtr(), &ffi)));
         }
     }
     public WebGPURenderPipeline CreateRenderPipeline(WebGPURenderPipelineDescriptor renderPipelineDescriptor)
@@ -308,24 +236,27 @@ public class WebGPUDevice : IDisposable
     {
         unsafe
         {
-            var ffiDesc = samplerDescriptor.ToF();
-            return new(new(FFI.WGPUDevice.wgpuDeviceCreateSampler(Native.GetPtr(), &ffiDesc)));
+            using var ffiMem = new FFIMemoryManager(stackalloc byte[64]);
+            var ffi = samplerDescriptor.ToF(ffiMem);
+            return new(new(FFI.WGPUDevice.wgpuDeviceCreateSampler(Native.GetPtr(), &ffi)));
         }
     }
     public WebGPUShaderModule CreateShaderModule(WebGPUShaderModuleDescriptor shaderModuleDescriptor)
     {
         unsafe
         {
-            var ffiDesc = shaderModuleDescriptor.ToF();
-            return new(new(FFI.WGPUDevice.wgpuDeviceCreateShaderModule(Native.GetPtr(), &ffiDesc)));
+            using var ffiMem = new FFIMemoryManager(stackalloc byte[128]);
+            var ffi = shaderModuleDescriptor.ToF(ffiMem);
+            return new(new(FFI.WGPUDevice.wgpuDeviceCreateShaderModule(Native.GetPtr(), &ffi)));
         }
     }
     public WebGPUTexture CreateTexture(WebGPUTextureDescriptor textureDescriptor)
     {
         unsafe
         {
-            var ffiDesc = textureDescriptor.ToF();
-            return new(new(FFI.WGPUDevice.wgpuDeviceCreateTexture(Native.GetPtr(), &ffiDesc)));
+            using var ffiMem = new FFIMemoryManager(stackalloc byte[128]);
+            var ffi = textureDescriptor.ToF(ffiMem);
+            return new(new(FFI.WGPUDevice.wgpuDeviceCreateTexture(Native.GetPtr(), &ffi)));
         }
     }
     public void Destroy()
@@ -364,15 +295,15 @@ public class WebGPUDevice : IDisposable
             return managedFeatuers;
         }
     }
-    public void GetAdapterInfo()
+    public WebGPUAdapterInfo GetAdapterInfo()
     {
         unsafe
         {
             FFI.WGPUAdapterInfo ffi = default;
             FFI.WGPUDevice.wgpuDeviceGetAdapterInfo(Native.GetPtr(), &ffi);
-            var amanaged = WebGPUAdapterInfo. ffi
+            var managed = WebGPUAdapterInfo.ToW(ffi);
             FFI.WGPUAdapterInfo.FreeMembers(ref ffi);
-            return ;
+            return managed;
         }
     }
     public WebGPUQueue GetQueue()
@@ -444,42 +375,9 @@ public class WebGPUDevice : IDisposable
     {
         unsafe
         {
-            fixed (byte* labelPtr = FFI.WGPUStringView.ConvertWGPUStringParts(label, out var lLength))
-                FFI.WGPUDevice.wgpuDeviceSetLabel(Native.GetPtr(), new FFI.WGPUStringView(labelPtr, lLength));
+            using var ffiMem = new FFIMemoryManager(stackalloc byte[16]);
+            FFI.WGPUDevice.wgpuDeviceSetLabel(Native.GetPtr(), ffiMem.AllocateString(label));
         }
     }
 
-}
-
-
-[FFINote(typeof(FFI.WGPUQuerySetDescriptor))]
-public class WebGPUQuerySetDescriptor
-{
-    public string Label = "";
-    public WebGPUQueryType Type;
-    public uint Count;
-}
-
-[FFINote(typeof(FFI.WGPUPipelineLayoutDescriptor))]
-public class WebGPUPipelineLayoutDescriptor
-{
-    public string Label = "";
-    public required WebGPUBindGroupLayout[] BindGroupLayouts;
-    public uint ImmediateSize = 0;
-
-    internal unsafe FFI.WGPUPipelineLayoutDescriptor ToF(FFIMemoryManager ffiMem)
-    {
-        var bindGroupLayoutsPtr = (FFI.WGPUBindGroupLayout**)ffiMem.stackArea.Allocate<IntPtr>(BindGroupLayouts.Length);
-        for (var i = 0; BindGroupLayouts.Length > i; i += 1)
-        {
-            bindGroupLayoutsPtr[i] = BindGroupLayouts[i].Native.GetPtr();
-        }
-        return new()
-        {
-            Label = ffiMem.AllocateString(Label),
-            BindGroupLayoutsCount = (nuint)BindGroupLayouts.Length,
-            BindGroupLayouts = bindGroupLayoutsPtr,
-            ImmediateSize = ImmediateSize,
-        };
-    }
 }

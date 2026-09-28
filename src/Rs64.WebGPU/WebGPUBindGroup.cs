@@ -11,6 +11,22 @@ public class WebGPUBindGroupDescriptor
     public string Label = "";
     public required WebGPUBindGroupLayout Layout;
     public required WebGPUBindGroupEntry[] Entries;
+
+    internal unsafe FFI.WGPUBindGroupDescriptor ToF(FFIMemoryManager ffiMem)
+    {
+        var ffiEntries = ffiMem.AllocateArea<FFI.WGPUBindGroupEntry>(Entries.Length);
+        for (var i = 0; Entries.Length > i; i += 1)
+        {
+            ffiEntries[i] = WebGPUBindGroupEntry.ToF(Entries[i]);
+        }
+        return new FFI.WGPUBindGroupDescriptor()
+        {
+            Label = ffiMem.AllocateString(Label),
+            Layout = Layout.Native.GetPtr(),
+            EntriesCount = (nuint)Entries.Length,
+            Entries = ffiEntries
+        };
+    }
 }
 [FFINote(typeof(FFI.WGPUBindGroupEntry))]
 public class WebGPUBindGroupEntry
@@ -90,6 +106,21 @@ public class WebGPUBindGroupLayoutDescriptor
 {
     public string Label = "";
     public required WebGPUBindGroupLayoutEntry[] Entries;
+    internal unsafe FFI.WGPUBindGroupLayoutDescriptor ToF(FFIMemoryManager ffiMem)
+    {
+        var ffiEntries = ffiMem.AllocateArea<FFI.WGPUBindGroupLayoutEntry>(Entries.Length);
+        for (var i = 0; Entries.Length > i; i += 1)
+        {
+            ffiEntries[i] = WebGPUBindGroupLayoutEntry.ToF(Entries[i]);
+        }
+        return new FFI.WGPUBindGroupLayoutDescriptor()
+        {
+            Label = ffiMem.AllocateString(Label),
+            EntriesCount = (nuint)Entries.Length,
+            Entries = ffiEntries
+        };
+
+    }
 }
 [FFINote(typeof(FFI.WGPUBindGroupLayoutEntry))]
 public class WebGPUBindGroupLayoutEntry

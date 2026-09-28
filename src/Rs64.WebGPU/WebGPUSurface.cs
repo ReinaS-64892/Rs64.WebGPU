@@ -144,11 +144,3 @@ public class WebGPUSurfaceTexture : IDisposable
         Texture.Dispose();
     }
 }
-
-[FFINote(typeof(FFI.WGPUTexture))]
-public class WebGPUTexture : IDisposable
-{
-    internal WGPUObjectHolder<FFI.WGPUTexture> Native { get; }
-    internal WebGPUTexture(WGPUObjectHolder<FFI.WGPUTexture> holder) { Native = holder; }
-    public void Dispose() { Native.Dispose(); }
-}

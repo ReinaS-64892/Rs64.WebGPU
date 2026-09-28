@@ -312,11 +312,13 @@ public struct WebGPUOrigin3d
 }
 
 [FFINote(typeof(FFI.WGPUExtent3d))]
-public class WebGPUExtent3d
+public struct WebGPUExtent3d
 {
     public uint Width;
     public uint Height = 1;
     public uint DepthOrArrayLayers = 1;
+    public WebGPUExtent3d() { }
+
     internal FFI.WGPUExtent3d ToF()
     {
         return new()
@@ -349,4 +351,11 @@ public class WebGPUCommandBuffer
 public class WebGPUCommandEncoderDescriptor
 {
     public string Label = "";
+    internal FFI.WGPUCommandEncoderDescriptor ToF(FFIMemoryManager ffiMem)
+    {
+        return new()
+        {
+            Label = ffiMem.AllocateString(Label),
+        };
+    }
 }

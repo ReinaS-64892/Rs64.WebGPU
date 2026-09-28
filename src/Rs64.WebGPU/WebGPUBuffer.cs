@@ -173,5 +173,15 @@ public class WebGPUBufferDescriptor
     public string Label = "";
     public WebGPUBufferUsage Usage = WebGPUBufferUsage.None;
     public ulong Size;
-    public bool MappedAtCreation = false;
+
+    internal FFI.WGPUBufferDescriptor ToF(FFIMemoryManager ffiMem, bool mappedAtCreation)
+    {
+        return new FFI.WGPUBufferDescriptor()
+        {
+            Label = ffiMem.AllocateString(Label),
+            Usage = Usage.ToF(),
+            Size = Size,
+            MappedAtCreation = (FFI.WGPUBool)mappedAtCreation
+        };
+    }
 }
