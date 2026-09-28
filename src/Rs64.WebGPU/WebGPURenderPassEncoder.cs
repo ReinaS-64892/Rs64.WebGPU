@@ -10,7 +10,11 @@ public class WebGPURenderPassEncoder : IDisposable
 {
     internal WGPUObjectHolder<FFI.WGPURenderPassEncoder> Native { get; }
     internal WebGPURenderPassEncoder(WGPUObjectHolder<FFI.WGPURenderPassEncoder> holder) { Native = holder; }
-    public void Dispose() { Native.Dispose(); }
+    public void Dispose()
+    {
+        End();
+        Native.Dispose();
+    }
 
     public void SetPipeline(WebGPURenderPipeline renderPipeline)
     {
