@@ -2,14 +2,16 @@
 // SPDX-License-Identifier: MPL-2.0
 
 using System;
+using System.Threading.Channels;
 using System.Threading.Tasks;
 
 namespace Rs64.WebGPU;
 
 public partial class WebGPUAdapter
 {
-    class RequestDeviceCallBack(TaskCompletionSource<WebGPUDevice> task) : FFI.IWGPURequestDeviceCallback
+    class RequestDeviceCallBack(ChannelWriter<WebGPUFuture> futureChannel, TaskCompletionSource<WebGPUDevice> task) : FFI.IWGPURequestDeviceCallback
     {
+        public ChannelWriter<WebGPUFuture> FutureChannel { get; } = futureChannel;
         public TaskCompletionSource<WebGPUDevice> Task { get; } = task;
         public unsafe void CallBack(
             FFI.WGPURequestDeviceStatus status
@@ -26,7 +28,7 @@ public partial class WebGPUAdapter
             {
                 case FFI.WGPURequestDeviceStatus.Success:
                     {
-                        Task.SetResult(new(new(device)));
+                        Task.SetResult(new(new(device),FutureChannel));
                         return;
                     }
                 case FFI.WGPURequestDeviceStatus.Error:

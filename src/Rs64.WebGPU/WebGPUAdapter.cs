@@ -3,6 +3,7 @@
 
 using System;
 using System.Linq;
+using System.Threading.Channels;
 using System.Threading.Tasks;
 
 namespace Rs64.WebGPU;
@@ -11,7 +12,13 @@ namespace Rs64.WebGPU;
 public partial class WebGPUAdapter : IDisposable
 {
     internal WGPUObjectHolder<FFI.WGPUAdapter> Native { get; }
-    internal WebGPUAdapter(WGPUObjectHolder<FFI.WGPUAdapter> holder) { Native = holder; }
+    internal ChannelWriter<WebGPUFuture> FutureChannel { get; }
+
+    internal WebGPUAdapter(WGPUObjectHolder<FFI.WGPUAdapter> holder, ChannelWriter<WebGPUFuture> futureChannel)
+    {
+        Native = holder;
+        FutureChannel = futureChannel;
+    }
     public void Dispose() { Native.Dispose(); }
 
     public WebGPULimits GetLimits()
@@ -71,7 +78,7 @@ public partial class WebGPUAdapter : IDisposable
     public Task<WebGPUDevice> RequestRequestDevice(WebGPUDeviceDescriptor? requestDeviceDescriptor = null)
     {
         requestDeviceDescriptor ??= new();
-        var callBack = new RequestDeviceCallBack(new TaskCompletionSource<WebGPUDevice>());
+        var callBack = new RequestDeviceCallBack(FutureChannel, new TaskCompletionSource<WebGPUDevice>());
         unsafe
         {
             var ffiCallBack = new FFI.WGPURequestDeviceCallbackInfo
@@ -114,7 +121,8 @@ public partial class WebGPUAdapter : IDisposable
                 desc.DeviceLostCallbackInfo = ffiDeviceLostCallBack;
                 desc.UncapturedErrorCallbackInfo = ffiUncapturedErrorCallback;
 
-                _ = FFI.WGPUAdapter.wgpuAdapterRequestDevice(Native.GetPtr(), &desc, ffiCallBack);
+                var future = FFI.WGPUAdapter.wgpuAdapterRequestDevice(Native.GetPtr(), &desc, ffiCallBack);
+                if (FutureChannel.TryWrite(new(future)) is false) { Console.WriteLine(" failed : future send to manager"); }
             }
         }
         return callBack.Task.Task;

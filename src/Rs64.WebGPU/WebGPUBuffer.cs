@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: MPL-2.0
 
 using System;
+using System.Threading.Channels;
 using System.Threading.Tasks;
 
 namespace Rs64.WebGPU;
@@ -10,13 +11,19 @@ namespace Rs64.WebGPU;
 public class WebGPUBuffer : IDisposable
 {
     internal WGPUObjectHolder<FFI.WGPUBuffer> Native { get; }
-    internal WebGPUBuffer(WGPUObjectHolder<FFI.WGPUBuffer> holder) { Native = holder; }
+    internal ChannelWriter<WebGPUFuture> FutureChannel { get; }
+
+    internal WebGPUBuffer(WGPUObjectHolder<FFI.WGPUBuffer> holder, ChannelWriter<WebGPUFuture> futureChannel)
+    {
+        Native = holder;
+        FutureChannel = futureChannel;
+    }
     public void Dispose() { Native.Dispose(); }
 
 
     public Task<Mapped> MapAsync(WebGPUMapMode mapMode, nuint offset, nuint size)
     {
-        var task = new TaskCompletionSource<Mapped>();
+        var task = new TaskCompletionSource<Mapped>(TaskCreationOptions.RunContinuationsAsynchronously);
         unsafe
         {
             FFI.WGPUBufferMapCallbackInfo bufferMapCallbackInfo = new()
@@ -25,7 +32,8 @@ public class WebGPUBuffer : IDisposable
                 WGPUBufferMapCallback = &FFI.WGPUBufferMapCallbackManagedWrapper.CallBack,
                 UserData1 = FFI.WGPUBufferMapCallbackManagedWrapper.CreateUserData(new BufferMapCallback(this, task)),
             };
-            FFI.WGPUBuffer.wgpuBufferMapAsync(Native.GetPtr(), mapMode.ToF(), offset, size, bufferMapCallbackInfo);
+            var future = FFI.WGPUBuffer.wgpuBufferMapAsync(Native.GetPtr(), mapMode.ToF(), offset, size, bufferMapCallbackInfo);
+            if (FutureChannel.TryWrite(new(future)) is false) { Console.WriteLine(" failed : future send to manager"); }
         }
         return task.Task;
     }
@@ -48,24 +56,24 @@ public class WebGPUBuffer : IDisposable
                 case FFI.WGPUMapAsyncStatus.Success:
                     {
                         Task.SetResult(new(WebGPUBuffer));
-                        break;
+                        return;
                     }
                 case FFI.WGPUMapAsyncStatus.CallbackCancelled:
                     {
                         // TODO : log !!!
                         Console.WriteLine("MapAsync CallBackCancelled : " + managedMessage);
                         Task.SetCanceled();
-                        break;
+                        return;
                     }
                 case FFI.WGPUMapAsyncStatus.Error:
                     {
                         Task.SetException(new CallBackErrorException("MapAsync Error : " + managedMessage));
-                        break;
+                        return;
                     }
                 case FFI.WGPUMapAsyncStatus.Aborted:
                     {
                         Task.SetException(new CallBackAbortException("MapAsync Aborted : " + managedMessage));
-                        break;
+                        return;
                     }
             }
             throw new InvalidCallBackStatusException("MapAsync : " + managedMessage);
@@ -83,9 +91,12 @@ public class WebGPUBuffer : IDisposable
         {
             unsafe
             {
+                // この層で actualSize を知っておかないと、span とか作る時に死ぬから ... WGPU_WHOLE_MAP_SIZE を通す設計には出来ない。
+                // var actualSize = size ?? FFI.Webgpu.WGPU_WHOLE_MAP_SIZE;
                 var actualSize = size ?? (nuint)(buffer!.GetSize() - offset);
                 var ptr = FFI.WGPUBuffer.wgpuBufferGetMappedRange(buffer!.Native.GetPtr(), offset, actualSize);
 
+                if (ptr is null) { throw new Exception(); }
                 if (int.MaxValue < actualSize) { throw new Exception(); }
                 return new(ptr, (int)actualSize);
             }
@@ -95,8 +106,9 @@ public class WebGPUBuffer : IDisposable
             unsafe
             {
                 var actualSize = size ?? (nuint)(buffer!.GetSize() - offset);
-                var ptr = FFI.WGPUBuffer.wgpuBufferGetMappedRange(buffer!.Native.GetPtr(), offset, actualSize);
+                var ptr = FFI.WGPUBuffer.wgpuBufferGetConstMappedRange(buffer!.Native.GetPtr(), offset, actualSize);
 
+                if (ptr is null) { throw new Exception(); }
                 if (int.MaxValue < actualSize) { throw new Exception(); }
                 return new(ptr, (int)actualSize);
             }

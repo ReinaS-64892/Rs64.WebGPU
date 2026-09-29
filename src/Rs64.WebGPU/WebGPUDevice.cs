@@ -4,6 +4,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading.Channels;
 using System.Threading.Tasks;
 namespace Rs64.WebGPU;
 
@@ -11,7 +12,13 @@ namespace Rs64.WebGPU;
 public class WebGPUDevice : IDisposable
 {
     internal WGPUObjectHolder<FFI.WGPUDevice> Native { get; }
-    internal WebGPUDevice(WGPUObjectHolder<FFI.WGPUDevice> holder) { Native = holder; }
+    internal ChannelWriter<WebGPUFuture> FutureChannel { get; }
+
+    internal WebGPUDevice(WGPUObjectHolder<FFI.WGPUDevice> holder, ChannelWriter<WebGPUFuture> futureChannel)
+    {
+        Native = holder;
+        FutureChannel = futureChannel;
+    }
     public void Dispose() { Native.Dispose(); }
 
     public WebGPUBindGroup CreateBindGroup(WebGPUBindGroupDescriptor bindGroupDescriptor)
@@ -42,7 +49,7 @@ public class WebGPUDevice : IDisposable
             var buffer = FFI.WGPUDevice.wgpuDeviceCreateBuffer(Native.GetPtr(), &ffi);
 
             if (buffer is null) { return null; }
-            return new(new(buffer));
+            return new(new(buffer), FutureChannel);
         }
     }
     public MappedBufferHolder? CreateMappedBuffer(WebGPUBufferDescriptor bufferDescriptor)
@@ -54,7 +61,7 @@ public class WebGPUDevice : IDisposable
             var buffer = FFI.WGPUDevice.wgpuDeviceCreateBuffer(Native.GetPtr(), &ffi);
 
             if (buffer is null) { return null; }
-            var wrappedBuffer = new WebGPUBuffer(new(buffer));
+            var wrappedBuffer = new WebGPUBuffer(new(buffer), FutureChannel);
             return new(wrappedBuffer, new(wrappedBuffer));
         }
     }
@@ -89,7 +96,7 @@ public class WebGPUDevice : IDisposable
     }
     public Task<WebGPUComputePipeline> CreateComputePipelineAsync(WebGPUComputePipelineDescriptor computePipelineDescriptor)
     {
-        var taskCompletionSource = new TaskCompletionSource<WebGPUComputePipeline>();
+        var taskCompletionSource = new TaskCompletionSource<WebGPUComputePipeline>(TaskCreationOptions.RunContinuationsAsynchronously);
         unsafe
         {
             var ffiMem = new FFIStackMemory(stackalloc nint[32]); using var s = FFIStackMemory.BindScope(ref ffiMem);
@@ -103,7 +110,8 @@ public class WebGPUDevice : IDisposable
             };
 
             var ffiDesc = computePipelineDescriptor.ToF(ref ffiMem);
-            var _ = FFI.WGPUDevice.wgpuDeviceCreateComputePipelineAsync(Native.GetPtr(), &ffiDesc, ffiCb);
+            var future = FFI.WGPUDevice.wgpuDeviceCreateComputePipelineAsync(Native.GetPtr(), &ffiDesc, ffiCb);
+            if (FutureChannel.TryWrite(new(future)) is false) { Console.WriteLine(" failed : future send to manager"); }
         }
         return taskCompletionSource.Task;
     }
@@ -168,7 +176,7 @@ public class WebGPUDevice : IDisposable
 
     public Task<WebGPURenderPipeline> CreateRenderPipelineAsync(WebGPURenderPipelineDescriptor renderPipelineDescriptor)
     {
-        var taskCompletionSource = new TaskCompletionSource<WebGPURenderPipeline>();
+        var taskCompletionSource = new TaskCompletionSource<WebGPURenderPipeline>(TaskCreationOptions.RunContinuationsAsynchronously);
         unsafe
         {
             var ffiCb = new FFI.WGPUCreateRenderPipelineAsyncCallbackInfo()
@@ -179,7 +187,8 @@ public class WebGPUDevice : IDisposable
             };
             var ffiMem = new FFIStackMemory(stackalloc nint[32]); using var s = FFIStackMemory.BindScope(ref ffiMem);
             var ffiDesc = renderPipelineDescriptor.ToF(ref ffiMem);
-            _ = FFI.WGPUDevice.wgpuDeviceCreateRenderPipelineAsync(Native.GetPtr(), &ffiDesc, ffiCb);
+            var future = FFI.WGPUDevice.wgpuDeviceCreateRenderPipelineAsync(Native.GetPtr(), &ffiDesc, ffiCb);
+            if (FutureChannel.TryWrite(new(future)) is false) { Console.WriteLine(" failed : future send to manager"); }
         }
         return taskCompletionSource.Task;
     }
@@ -257,7 +266,7 @@ public class WebGPUDevice : IDisposable
         {
             var ffiMem = new FFIStackMemory(stackalloc nint[16]); using var s = FFIStackMemory.BindScope(ref ffiMem);
             var ffi = shaderModuleDescriptor.ToF(ref ffiMem);
-            return new(new(FFI.WGPUDevice.wgpuDeviceCreateShaderModule(Native.GetPtr(), &ffi)));
+            return new(new(FFI.WGPUDevice.wgpuDeviceCreateShaderModule(Native.GetPtr(), &ffi)), FutureChannel);
         }
     }
     public WebGPUTexture CreateTexture(WebGPUTextureDescriptor textureDescriptor)
@@ -319,7 +328,7 @@ public class WebGPUDevice : IDisposable
     }
     public WebGPUQueue GetQueue()
     {
-        unsafe { return new(new(FFI.WGPUDevice.wgpuDeviceGetQueue(Native.GetPtr()))); }
+        unsafe { return new(new(FFI.WGPUDevice.wgpuDeviceGetQueue(Native.GetPtr())), FutureChannel); }
     }
     public void PushErrorScope(WebGPUErrorFilter errorFilter)
     {
@@ -330,7 +339,7 @@ public class WebGPUDevice : IDisposable
     }
     public Task<(WebGPUErrorType, string)> PopErrorScope()
     {
-        var task = new TaskCompletionSource<(WebGPUErrorType, string)>();
+        var task = new TaskCompletionSource<(WebGPUErrorType, string)>(TaskCreationOptions.RunContinuationsAsynchronously);
         unsafe
         {
             var managedCallbackReceiver = new PopErrorScopeCallback(task);
@@ -340,7 +349,8 @@ public class WebGPUDevice : IDisposable
                 WGPUPopErrorScopeCallback = &FFI.WGPUPopErrorScopeCallbackManagedWrapper.CallBack,
                 UserData1 = FFI.WGPUPopErrorScopeCallbackManagedWrapper.CreateUserData(managedCallbackReceiver)
             };
-            FFI.WGPUDevice.wgpuDevicePopErrorScope(Native.GetPtr(), popErrorScopeCallbackInfo);
+            var future = FFI.WGPUDevice.wgpuDevicePopErrorScope(Native.GetPtr(), popErrorScopeCallbackInfo);
+            if (FutureChannel.TryWrite(new(future)) is false) { Console.WriteLine(" failed : future send to manager"); }
         }
         return task.Task;
     }

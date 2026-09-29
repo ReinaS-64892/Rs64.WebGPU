@@ -4,7 +4,8 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Runtime.CompilerServices;
+using System.Threading;
+using System.Threading.Channels;
 using System.Threading.Tasks;
 
 namespace Rs64.WebGPU;
@@ -13,10 +14,82 @@ namespace Rs64.WebGPU;
 public class WebGPUInstance : IDisposable
 {
     internal WGPUObjectHolder<FFI.WGPUInstance> Native { get; }
-    internal WebGPUInstance(WGPUObjectHolder<FFI.WGPUInstance> holder) { Native = holder; }
-    public void Dispose() { Native.Dispose(); }
+    internal WebGPUInstance(WGPUObjectHolder<FFI.WGPUInstance> holder)
+    {
+        Native = holder;
+
+        var futureChannel = Channel.CreateUnbounded<WebGPUFuture>();
+        FutureChannel = futureChannel;
+        var futureChannelReader = futureChannel.Reader;
+
+        CancellationTokenSource = new();
+        var cancelToken = CancellationTokenSource.Token;
+        FutureWaiter = Task.Run(async () =>
+        {
+            // よくわかってないが Dawn 実装で最初すごい勢いでやると死ぬっぽいので安全のための 5ms
+            // 下1行 無しで 1 ms loop にすると死ぬことがわかっている
+            await Task.Delay(5, cancelToken);
+
+            var waitList = new List<WebGPUFuture>();
+            while (cancelToken.IsCancellationRequested is false)
+            {
+                if (futureChannelReader.TryRead(out var newFuture))
+                {
+                    waitList.Add(newFuture);
+                    continue;
+                }
+
+                // Console.WriteLine("wait any 0 !");
+                // DoWaitAny(waitList);
+                // Console.WriteLine("wait any exit !");
+
+                // Console.WriteLine("process events !");
+                ProcessEvents();
+                // Console.WriteLine("process exit !");
+
+                await Task.Delay(5, cancelToken);
+                if (cancelToken.IsCancellationRequested) { break; }
+            }
+            Console.WriteLine("exit process events loop");
+        }, cancelToken);
+        FutureWaiter.ContinueWith(t => { if (t.IsFaulted) { Console.WriteLine(t.Exception); } });
+
+        // wait any が wgpu で使えません ... ぬん
+#pragma warning disable CS8321 // Local function is declared but never used
+        void DoWaitAny(List<WebGPUFuture> waitList)
+        {
+            Span<WebGPUFuture> futures = stackalloc WebGPUFuture[waitList.Count];
+            Span<bool> completes = stackalloc bool[waitList.Count];
+            for (var i = 0; futures.Length > i; i += 1) { futures[i] = waitList[i]; }
+
+            var result = InstanceWaitAny(futures, completes, 0);
+
+            if (result is FFI.WGPUWaitStatus.Error) { Console.WriteLine(result); }
+            else if (result is FFI.WGPUWaitStatus.TimedOut) { }
+            else if (result is FFI.WGPUWaitStatus.Success)
+            {
+                waitList.Clear();
+                for (var i = 0; futures.Length > i; i += 1)
+                {
+                    if (completes[i] is false) { continue; }
+                    waitList.Add(futures[i]);
+                }
+            }
+        }
+#pragma warning restore CS8321 // Local function is declared but never used
+    }
 
 
+    public void Dispose()
+    {
+        CancellationTokenSource.Cancel();
+        Native.Dispose();
+
+    }
+
+    internal ChannelWriter<WebGPUFuture> FutureChannel;
+    private Task FutureWaiter;
+    private CancellationTokenSource CancellationTokenSource;
 
     public HashSet<WebGPUWgslLanguageFeatureName> GetWgslLanguageFeatures()
     {
@@ -44,14 +117,14 @@ public class WebGPUInstance : IDisposable
     {
         return languageFeatureNames.All(HasWgslLanguageFeature);
     }
-    internal void InstanceProcessEvents()
+    internal void ProcessEvents()
     {
         unsafe { FFI.WGPUInstance.wgpuInstanceProcessEvents(Native.GetPtr()); }
     }
 
     public Task<WebGPUAdapter> RequestAdapter(WebGPURequestAdapterOptions? requestAdapterOptions = null)
     {
-        var callBack = new RequestAdapterCallBack(new TaskCompletionSource<WebGPUAdapter>());
+        var callBack = new RequestAdapterCallBack(FutureChannel, new TaskCompletionSource<WebGPUAdapter>(TaskCreationOptions.RunContinuationsAsynchronously));
         unsafe
         {
             var ffiCallBack = new FFI.WGPURequestAdapterCallbackInfo
@@ -74,12 +147,14 @@ public class WebGPUInstance : IDisposable
                 adapterOption.CompatibleSurface = requestAdapterOptions.CompatibleSurface is not null ? requestAdapterOptions.CompatibleSurface.Native.GetPtr() : null;
             }
 
-            _ = FFI.WGPUInstance.wgpuInstanceRequestAdapter(Native.GetPtr(), adapterOptionPtr, ffiCallBack);
+            var future = FFI.WGPUInstance.wgpuInstanceRequestAdapter(Native.GetPtr(), adapterOptionPtr, ffiCallBack);
+            if (FutureChannel.TryWrite(new(future)) is false) { Console.WriteLine(" failed : future send to manager"); }
         }
         return callBack.Task.Task;
     }
-    class RequestAdapterCallBack(TaskCompletionSource<WebGPUAdapter> task) : FFI.IWGPURequestAdapterCallback
+    class RequestAdapterCallBack(ChannelWriter<WebGPUFuture> futureChannel, TaskCompletionSource<WebGPUAdapter> task) : FFI.IWGPURequestAdapterCallback
     {
+        public ChannelWriter<WebGPUFuture> FutureChannel { get; } = futureChannel;
         public TaskCompletionSource<WebGPUAdapter> Task { get; } = task;
 
         public unsafe void CallBack(
@@ -92,7 +167,7 @@ public class WebGPUInstance : IDisposable
             {
                 case FFI.WGPURequestAdapterStatus.Success:
                     {
-                        Task.SetResult(new(new(adapter)));
+                        Task.SetResult(new(new(adapter), FutureChannel));
                         return;
                     }
                 case FFI.WGPURequestAdapterStatus.Error:
@@ -132,14 +207,22 @@ public class WebGPUInstance : IDisposable
         }
     }
 
-    internal void InstanceWaitAny()
+    internal FFI.WGPUWaitStatus InstanceWaitAny(ReadOnlySpan<WebGPUFuture> future, Span<bool> completedOut, ulong timeout_NS)
     {
         unsafe
         {
-            nuint length = 0;
-            var features = stackalloc FFI.WGPUFutureWaitInfo[(int)length];
-            var timeout_nanosecond = 0ul;
-            FFI.WGPUInstance.wgpuInstanceWaitAny(Native.GetPtr(), length, features, timeout_nanosecond);
+            var ffiFutures = stackalloc FFI.WGPUFutureWaitInfo[future.Length];
+            for (var i = 0; future.Length > i; i += 1)
+            {
+                ffiFutures[i].Future.Id = future[i].FutureID;
+            }
+            var result = FFI.WGPUInstance.wgpuInstanceWaitAny(Native.GetPtr(), (nuint)future.Length, ffiFutures, timeout_NS);
+
+            for (var i = 0; future.Length > i; i += 1)
+            {
+                completedOut[i] = (bool)ffiFutures[i].Completed;
+            }
+            return result;
         }
 
     }

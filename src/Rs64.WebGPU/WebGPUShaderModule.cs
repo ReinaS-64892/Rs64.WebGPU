@@ -3,6 +3,7 @@
 
 using System;
 using System.Runtime.CompilerServices;
+using System.Threading.Channels;
 using System.Threading.Tasks;
 
 namespace Rs64.WebGPU;
@@ -11,11 +12,16 @@ namespace Rs64.WebGPU;
 public class WebGPUShaderModule : IDisposable
 {
     internal WGPUObjectHolder<FFI.WGPUShaderModule> Native { get; }
-    internal WebGPUShaderModule(WGPUObjectHolder<FFI.WGPUShaderModule> holder) { Native = holder; }
+    internal ChannelWriter<WebGPUFuture> FutureChannel { get; }
+    internal WebGPUShaderModule(WGPUObjectHolder<FFI.WGPUShaderModule> holder, ChannelWriter<WebGPUFuture> futureChannel)
+    {
+        Native = holder;
+        FutureChannel = futureChannel;
+    }
     public void Dispose() { Native.Dispose(); }
     public Task<WebGPUCompilationInfo> GetCompilationInfo()
     {
-        var taskCompletionSource = new TaskCompletionSource<WebGPUCompilationInfo>();
+        var taskCompletionSource = new TaskCompletionSource<WebGPUCompilationInfo>(TaskCreationOptions.RunContinuationsAsynchronously);
         unsafe
         {
             var cb = new FFI.WGPUCompilationInfoCallbackInfo()
@@ -24,7 +30,8 @@ public class WebGPUShaderModule : IDisposable
                 WGPUCompilationInfoCallback = &FFI.WGPUCompilationInfoCallbackManagedWrapper.CallBack,
                 UserData1 = FFI.WGPUCompilationInfoCallbackManagedWrapper.CreateUserData(new CompilationInfoCallback(taskCompletionSource)),
             };
-            _ = FFI.WGPUShaderModule.wgpuShaderModuleGetCompilationInfo(Native.GetPtr(), cb);
+            var future = FFI.WGPUShaderModule.wgpuShaderModuleGetCompilationInfo(Native.GetPtr(), cb);
+            if (FutureChannel.TryWrite(new(future)) is false) { Console.WriteLine(" failed : future send to manager"); }
         }
         return taskCompletionSource.Task;
     }

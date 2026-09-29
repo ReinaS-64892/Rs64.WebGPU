@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: MPL-2.0
 
 using System;
+using System.Threading.Channels;
 using System.Threading.Tasks;
 
 namespace Rs64.WebGPU;
@@ -10,7 +11,12 @@ namespace Rs64.WebGPU;
 public class WebGPUQueue : IDisposable
 {
     internal WGPUObjectHolder<FFI.WGPUQueue> Native { get; }
-    internal WebGPUQueue(WGPUObjectHolder<FFI.WGPUQueue> holder) { Native = holder; }
+    internal ChannelWriter<WebGPUFuture> FutureChannel { get; }
+    internal WebGPUQueue(WGPUObjectHolder<FFI.WGPUQueue> holder, ChannelWriter<WebGPUFuture> futureChannel)
+    {
+        Native = holder;
+        FutureChannel = futureChannel;
+    }
     public void Dispose() { Native.Dispose(); }
 
     public void Submit(WebGPUCommandBuffer[] commandBuffers)
@@ -26,7 +32,7 @@ public class WebGPUQueue : IDisposable
     }
     public Task OnSubmittedWorkDone()
     {
-        var taskCompletionSource = new TaskCompletionSource();
+        var taskCompletionSource = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         unsafe
         {
             var cb = new FFI.WGPUQueueWorkDoneCallbackInfo()
@@ -35,8 +41,12 @@ public class WebGPUQueue : IDisposable
                 WGPUQueueWorkDoneCallback = &FFI.WGPUQueueWorkDoneCallbackManagedWrapper.CallBack,
                 UserData1 = FFI.WGPUQueueWorkDoneCallbackManagedWrapper.CreateUserData(new QueueWorkDoneCallback(taskCompletionSource)),
             };
-            FFI.WGPUQueue.wgpuQueueOnSubmittedWorkDone(Native.GetPtr(), cb);
+            var future = FFI.WGPUQueue.wgpuQueueOnSubmittedWorkDone(Native.GetPtr(), cb);
+            if (FutureChannel.TryWrite(new(future)) is false) { Console.WriteLine(" failed : future send to manager"); }
+
         }
+
+        Console.WriteLine("ねこ");
         return taskCompletionSource.Task;
     }
     class QueueWorkDoneCallback(TaskCompletionSource taskCompletionSource) : FFI.IWGPUQueueWorkDoneCallback
