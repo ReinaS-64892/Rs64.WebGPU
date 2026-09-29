@@ -23,7 +23,15 @@ __THIS PROJECT IS UNSTABLE!__
 
 それと、後述の .so などの配置も忘れんようにね
 
-### Select Backend
+### Backend
+
+`src/Rs64.WebGPU.FFI/Rs64.WebGPU.FFI.csproj` に詳細がある。
+
+wgpu-native を指定する場合 -> `dotnet build -p:Rs64WebGPUBackend=wgpu-native`
+
+dawn を指定する場合 -> `dotnet build -p:Rs64WebGPUBackend=dawn`
+
+デフォルトは wgpu-native になります。
 
 #### wgpu-native
 
