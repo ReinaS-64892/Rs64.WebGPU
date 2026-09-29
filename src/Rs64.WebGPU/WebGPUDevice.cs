@@ -237,7 +237,7 @@ public class WebGPUDevice : IDisposable
     {
         unsafe
         {
-            var ffiMem = new FFIStackMemory(stackalloc nint[8]); using var s = FFIStackMemory.BindScope(ref ffiMem);
+            var ffiMem = new FFIStackMemory(stackalloc nint[64]); using var s = FFIStackMemory.BindScope(ref ffiMem);
             var ffiDesc = renderPipelineDescriptor.ToF(ref ffiMem);
             return new(new(FFI.WGPUDevice.wgpuDeviceCreateRenderPipeline(Native.GetPtr(), &ffiDesc)));
         }
