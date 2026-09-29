@@ -64,7 +64,7 @@ internal unsafe ref struct WGPUStringView
     internal static WGPUPinnedStringHolder ConvertPinnedString(string dotnetString)
     {
         var managedArray = Encoding.UTF8.GetBytes(dotnetString);
-        var gcHandle = GCHandle.Alloc(managedArray);
+        var gcHandle = GCHandle.Alloc(managedArray, GCHandleType.Pinned);
         return new((byte*)gcHandle.AddrOfPinnedObject(), managedArray.Length, gcHandle);
     }
     internal struct WGPUPinnedStringHolder(byte* stringView, int length, GCHandle? gCHandle) : IDisposable
