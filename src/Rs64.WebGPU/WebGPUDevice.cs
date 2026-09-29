@@ -18,8 +18,8 @@ public class WebGPUDevice : IDisposable
     {
         unsafe
         {
-            using var ffiMem = new FFIMemoryManager(stackalloc byte[256]);
-            var ffi = bindGroupDescriptor.ToF(ffiMem);
+            var ffiMem = new FFIStackMemory(stackalloc nint[32]); using var s = FFIStackMemory.BindScope(ref ffiMem);
+            var ffi = bindGroupDescriptor.ToF(ref ffiMem);
             return new(new(FFI.WGPUDevice.wgpuDeviceCreateBindGroup(Native.GetPtr(), &ffi)));
         }
     }
@@ -28,8 +28,8 @@ public class WebGPUDevice : IDisposable
     {
         unsafe
         {
-            using var ffiMem = new FFIMemoryManager(stackalloc byte[256]);
-            var ffi = bindGroupLayoutDescriptor.ToF(ffiMem);
+            var ffiMem = new FFIStackMemory(stackalloc nint[32]); using var s = FFIStackMemory.BindScope(ref ffiMem);
+            var ffi = bindGroupLayoutDescriptor.ToF(ref ffiMem);
             return new(new(FFI.WGPUDevice.wgpuDeviceCreateBindGroupLayout(Native.GetPtr(), &ffi)));
         }
     }
@@ -37,33 +37,43 @@ public class WebGPUDevice : IDisposable
     {
         unsafe
         {
-            using var ffiMem = new FFIMemoryManager(stackalloc byte[256]);
-            var ffi = bufferDescriptor.ToF(ffiMem, false);
+            var ffiMem = new FFIStackMemory(stackalloc nint[32]); using var s = FFIStackMemory.BindScope(ref ffiMem);
+            var ffi = bufferDescriptor.ToF(ref ffiMem, false);
             var buffer = FFI.WGPUDevice.wgpuDeviceCreateBuffer(Native.GetPtr(), &ffi);
 
             if (buffer is null) { return null; }
             return new(new(buffer));
         }
     }
-    public (WebGPUBuffer, WebGPUBuffer.Mapped)? CreateMappedBuffer(WebGPUBufferDescriptor bufferDescriptor)
+    public MappedBufferHolder? CreateMappedBuffer(WebGPUBufferDescriptor bufferDescriptor)
     {
         unsafe
         {
-            using var ffiMem = new FFIMemoryManager(stackalloc byte[256]);
-            var ffi = bufferDescriptor.ToF(ffiMem, true);
+            var ffiMem = new FFIStackMemory(stackalloc nint[32]); using var s = FFIStackMemory.BindScope(ref ffiMem);
+            var ffi = bufferDescriptor.ToF(ref ffiMem, true);
             var buffer = FFI.WGPUDevice.wgpuDeviceCreateBuffer(Native.GetPtr(), &ffi);
 
             if (buffer is null) { return null; }
             var wrappedBuffer = new WebGPUBuffer(new(buffer));
-            return (wrappedBuffer, new(wrappedBuffer));
+            return new(wrappedBuffer, new(wrappedBuffer));
+        }
+    }
+    public struct MappedBufferHolder(WebGPUBuffer buffer, WebGPUBuffer.Mapped mapped) : IDisposable
+    {
+        public WebGPUBuffer Buffer { get; } = buffer;
+        public WebGPUBuffer.Mapped Mapped { get; } = mapped;
+
+        public void Dispose()
+        {
+            Buffer.Dispose();
         }
     }
     public WebGPUCommandEncoder CreateCommandEncoder(WebGPUCommandEncoderDescriptor? commandEncoderDescriptor = null)
     {
         unsafe
         {
-            using var ffiMem = new FFIMemoryManager(stackalloc byte[32]);
-            var ffi = commandEncoderDescriptor is not null ? commandEncoderDescriptor.ToF(ffiMem) : default;
+            var ffiMem = new FFIStackMemory(stackalloc nint[8]); using var s = FFIStackMemory.BindScope(ref ffiMem);
+            var ffi = commandEncoderDescriptor is not null ? commandEncoderDescriptor.ToF(ref ffiMem) : default;
             var ptr = commandEncoderDescriptor is not null ? &ffi : null;
             return new(new(FFI.WGPUDevice.wgpuDeviceCreateCommandEncoder(Native.GetPtr(), ptr)));
         }
@@ -72,8 +82,8 @@ public class WebGPUDevice : IDisposable
     {
         unsafe
         {
-            using var ffiMem = new FFIMemoryManager(stackalloc byte[256]);
-            var ffi = computePipelineDescriptor.ToF(ffiMem);
+            var ffiMem = new FFIStackMemory(stackalloc nint[32]); using var s = FFIStackMemory.BindScope(ref ffiMem);
+            var ffi = computePipelineDescriptor.ToF(ref ffiMem);
             return new(new(FFI.WGPUDevice.wgpuDeviceCreateComputePipeline(Native.GetPtr(), &ffi)));
         }
     }
@@ -82,7 +92,7 @@ public class WebGPUDevice : IDisposable
         var taskCompletionSource = new TaskCompletionSource<WebGPUComputePipeline>();
         unsafe
         {
-            using var ffiMem = new FFIMemoryManager(stackalloc byte[256]);
+            var ffiMem = new FFIStackMemory(stackalloc nint[32]); using var s = FFIStackMemory.BindScope(ref ffiMem);
             var ffiCb = new FFI.WGPUCreateComputePipelineAsyncCallbackInfo()
             {
                 CallBackMode = FFI.WGPUCallbackMode.AllowSpontaneous,
@@ -92,7 +102,7 @@ public class WebGPUDevice : IDisposable
                 )
             };
 
-            var ffiDesc = computePipelineDescriptor.ToF(ffiMem);
+            var ffiDesc = computePipelineDescriptor.ToF(ref ffiMem);
             var _ = FFI.WGPUDevice.wgpuDeviceCreateComputePipelineAsync(Native.GetPtr(), &ffiDesc, ffiCb);
         }
         return taskCompletionSource.Task;
@@ -141,8 +151,8 @@ public class WebGPUDevice : IDisposable
     {
         unsafe
         {
-            using var ffiMem = new FFIMemoryManager(stackalloc byte[256]);
-            var ffi = pipelineLayoutDescriptor.ToF(ffiMem);
+            var ffiMem = new FFIStackMemory(stackalloc nint[32]); using var s = FFIStackMemory.BindScope(ref ffiMem);
+            var ffi = pipelineLayoutDescriptor.ToF(ref ffiMem);
             return new(new(FFI.WGPUDevice.wgpuDeviceCreatePipelineLayout(Native.GetPtr(), &ffi)));
         }
     }
@@ -150,8 +160,8 @@ public class WebGPUDevice : IDisposable
     {
         unsafe
         {
-            using var ffiMem = new FFIMemoryManager(stackalloc byte[64]);
-            var ffi = querySetDescriptor.ToF(ffiMem);
+            var ffiMem = new FFIStackMemory(stackalloc nint[8]); using var s = FFIStackMemory.BindScope(ref ffiMem);
+            var ffi = querySetDescriptor.ToF(ref ffiMem);
             return new(new(FFI.WGPUDevice.wgpuDeviceCreateQuerySet(Native.GetPtr(), &ffi)));
         }
     }
@@ -167,9 +177,9 @@ public class WebGPUDevice : IDisposable
                 WGPUCreateRenderPipelineAsyncCallback = &FFI.WGPUCreateRenderPipelineAsyncCallbackManagedWrapper.CallBack,
                 UserData1 = FFI.WGPUCreateRenderPipelineAsyncCallbackManagedWrapper.CreateUserData(new CreateRenderPipelineAsyncCallback(taskCompletionSource))
             };
-            using var ffiMem = new FFIMemoryManager(stackalloc byte[256]);
-            var ffiDesc = renderPipelineDescriptor.ToF(ffiMem);
-            var _ = FFI.WGPUDevice.wgpuDeviceCreateRenderPipelineAsync(Native.GetPtr(), &ffiDesc, ffiCb);
+            var ffiMem = new FFIStackMemory(stackalloc nint[32]); using var s = FFIStackMemory.BindScope(ref ffiMem);
+            var ffiDesc = renderPipelineDescriptor.ToF(ref ffiMem);
+            _ = FFI.WGPUDevice.wgpuDeviceCreateRenderPipelineAsync(Native.GetPtr(), &ffiDesc, ffiCb);
         }
         return taskCompletionSource.Task;
     }
@@ -218,8 +228,8 @@ public class WebGPUDevice : IDisposable
     {
         unsafe
         {
-            using var ffiMem = new FFIMemoryManager(stackalloc byte[256]);
-            var ffi = renderBundleEncoderDescriptor.ToF(ffiMem);
+            var ffiMem = new FFIStackMemory(stackalloc nint[32]); using var s = FFIStackMemory.BindScope(ref ffiMem);
+            var ffi = renderBundleEncoderDescriptor.ToF(ref ffiMem);
             return new(new(FFI.WGPUDevice.wgpuDeviceCreateRenderBundleEncoder(Native.GetPtr(), &ffi)));
         }
     }
@@ -227,8 +237,8 @@ public class WebGPUDevice : IDisposable
     {
         unsafe
         {
-            using var ffiMem = new FFIMemoryManager(stackalloc byte[64]);
-            var ffiDesc = renderPipelineDescriptor.ToF(ffiMem);
+            var ffiMem = new FFIStackMemory(stackalloc nint[8]); using var s = FFIStackMemory.BindScope(ref ffiMem);
+            var ffiDesc = renderPipelineDescriptor.ToF(ref ffiMem);
             return new(new(FFI.WGPUDevice.wgpuDeviceCreateRenderPipeline(Native.GetPtr(), &ffiDesc)));
         }
     }
@@ -236,8 +246,8 @@ public class WebGPUDevice : IDisposable
     {
         unsafe
         {
-            using var ffiMem = new FFIMemoryManager(stackalloc byte[64]);
-            var ffi = samplerDescriptor.ToF(ffiMem);
+            var ffiMem = new FFIStackMemory(stackalloc nint[8]); using var s = FFIStackMemory.BindScope(ref ffiMem);
+            var ffi = samplerDescriptor.ToF(ref ffiMem);
             return new(new(FFI.WGPUDevice.wgpuDeviceCreateSampler(Native.GetPtr(), &ffi)));
         }
     }
@@ -245,8 +255,8 @@ public class WebGPUDevice : IDisposable
     {
         unsafe
         {
-            using var ffiMem = new FFIMemoryManager(stackalloc byte[128]);
-            var ffi = shaderModuleDescriptor.ToF(ffiMem);
+            var ffiMem = new FFIStackMemory(stackalloc nint[16]); using var s = FFIStackMemory.BindScope(ref ffiMem);
+            var ffi = shaderModuleDescriptor.ToF(ref ffiMem);
             return new(new(FFI.WGPUDevice.wgpuDeviceCreateShaderModule(Native.GetPtr(), &ffi)));
         }
     }
@@ -254,8 +264,9 @@ public class WebGPUDevice : IDisposable
     {
         unsafe
         {
-            using var ffiMem = new FFIMemoryManager(stackalloc byte[128]);
-            var ffi = textureDescriptor.ToF(ffiMem);
+            var ffiMem = new FFIStackMemory(stackalloc nint[16]); using var s = FFIStackMemory.BindScope(ref ffiMem);
+
+            var ffi = textureDescriptor.ToF(ref ffiMem);
             return new(new(FFI.WGPUDevice.wgpuDeviceCreateTexture(Native.GetPtr(), &ffi)));
         }
     }
@@ -376,7 +387,7 @@ public class WebGPUDevice : IDisposable
     {
         unsafe
         {
-            using var ffiMem = new FFIMemoryManager(stackalloc byte[16]);
+            using var ffiMem = new FFIStackMemory(stackalloc nint[1]);
             FFI.WGPUDevice.wgpuDeviceSetLabel(Native.GetPtr(), ffiMem.AllocateString(label));
         }
     }

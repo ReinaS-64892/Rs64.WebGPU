@@ -119,13 +119,13 @@ public class WebGPUInstance : IDisposable
     {
         unsafe
         {
-            var stack = new StackAllocAsFFIArea(stackalloc byte[128]);
+            var ffiMem = new FFIStackMemory(stackalloc nint[16]); using var s = FFIStackMemory.BindScope(ref ffiMem);
             FFI.WGPUSurfaceDescriptor surfaceDescriptor = new();
 
             fixed (byte* ptr = FFI.WGPUStringView.ConvertWGPUStringParts(webGPUSurfaceDescriptor.Label, out var strLen))
             {
                 surfaceDescriptor.Label = new(ptr, strLen);
-                surfaceDescriptor.NextInChain = webGPUSurfaceDescriptor.GetExtensionSurfaceSource(stack);
+                surfaceDescriptor.NextInChain = webGPUSurfaceDescriptor.GetExtensionSurfaceSource(ffiMem);
 
                 return new(new(FFI.WGPUInstance.wgpuInstanceCreateSurface(Native.GetPtr(), &surfaceDescriptor)));
             }

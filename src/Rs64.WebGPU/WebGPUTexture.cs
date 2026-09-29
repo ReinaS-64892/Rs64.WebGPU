@@ -16,8 +16,8 @@ public class WebGPUTexture : IDisposable
     {
         unsafe
         {
-            using var ffiMem = new FFIMemoryManager(stackalloc byte[16]);
-            var ffiDesc = textureViewDescriptor.ToF(ffiMem);
+            var ffiMem = new FFIStackMemory(stackalloc nint[4]); using var s = FFIStackMemory.BindScope(ref ffiMem);
+            var ffiDesc = textureViewDescriptor.ToF(ref ffiMem);
             return new(new(FFI.WGPUTexture.wgpuTextureCreateView(Native.GetPtr(), &ffiDesc)));
         }
     }
@@ -25,7 +25,7 @@ public class WebGPUTexture : IDisposable
     {
         unsafe
         {
-            using var ffiMem = new FFIMemoryManager(stackalloc byte[16]);
+            var ffiMem = new FFIStackMemory(stackalloc nint[1]); using var s = FFIStackMemory.BindScope(ref ffiMem);
             FFI.WGPUTexture.wgpuTextureSetLabel(Native.GetPtr(), ffiMem.AllocateString(label));
         }
     }
@@ -113,7 +113,7 @@ public class WebGPUTextureView : IDisposable
     {
         unsafe
         {
-            using var ffiMem = new FFIMemoryManager(stackalloc byte[16]);
+            using var ffiMem = new FFIStackMemory(stackalloc nint[1]);
             FFI.WGPUTextureView.wgpuTextureViewSetLabel(Native.GetPtr(), ffiMem.AllocateString(label));
         }
     }
@@ -131,7 +131,7 @@ public class WebGPUTextureViewDescriptor
     public WebGPUTextureAspect? Aspect;
     public WebGPUTextureUsage Usage = WebGPUTextureUsage.None;
 
-    internal FFI.WGPUTextureViewDescriptor ToF(FFIMemoryManager ffiMem)
+    internal FFI.WGPUTextureViewDescriptor ToF(ref FFIStackMemory ffiMem)
     {
         return new()
         {
@@ -161,7 +161,7 @@ public class WebGPUTextureDescriptor
     public uint MipLevelCount = 1;
     public uint SampleCount = 1;
     public WebGPUTextureFormat?[] ViewFormats = [];
-    internal unsafe virtual FFI.WGPUTextureDescriptor ToF(FFIMemoryManager ffiMem)
+    internal unsafe virtual FFI.WGPUTextureDescriptor ToF(ref FFIStackMemory ffiMem)
     {
         var viewFormats = ffiMem.AllocateArea<FFI.WGPUTextureFormat>(ViewFormats.Length);
         for (var i = 0; ViewFormats.Length > i; i += 1)
@@ -186,9 +186,9 @@ public class WebGPUTextureDescriptor
 internal class WebGPUTextureDescriptorWithBindingViewDimension : WebGPUTextureDescriptor
 {
     public WebGPUTextureViewDimension? TextureBindingViewDimension;
-    internal unsafe override FFI.WGPUTextureDescriptor ToF(FFIMemoryManager ffiMem)
+    internal unsafe override FFI.WGPUTextureDescriptor ToF(ref FFIStackMemory ffiMem)
     {
-        var ffi = base.ToF(ffiMem);
+        var ffi = base.ToF(ref ffiMem);
         var bvd = ffiMem.AllocateArea<FFI.WGPUTextureBindingViewDimension>();
         bvd->NextInChain.StructType = FFI.WGPUSType.TextureBindingViewDimension;
         bvd->TextureBindingViewDimension = TextureBindingViewDimension.ToF();

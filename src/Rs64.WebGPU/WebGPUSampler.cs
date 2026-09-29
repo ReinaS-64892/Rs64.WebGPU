@@ -16,7 +16,7 @@ public class WebGPUSampler : IDisposable
     {
         unsafe
         {
-            using var ffiMem = new FFIMemoryManager(stackalloc byte[16]);
+            using var ffiMem = new FFIStackMemory(stackalloc nint[1]);
             FFI.WGPUSampler.wgpuSamplerSetLabel(Native.GetPtr(), ffiMem.AllocateString(label));
         }
     }
@@ -46,7 +46,7 @@ public class WebGPUSamplerDescriptor
 
     public ushort MaxAnisotropy = 1;
 
-    internal FFI.WGPUSamplerDescriptor ToF(FFIMemoryManager ffiMem)
+    internal FFI.WGPUSamplerDescriptor ToF(ref  FFIStackMemory ffiMem)
     {
         return new()
         {

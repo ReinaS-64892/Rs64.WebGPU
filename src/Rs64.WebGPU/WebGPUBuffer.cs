@@ -128,8 +128,8 @@ public class WebGPUBuffer : IDisposable
         {
             if (buffer is not null)
             {
-                buffer = null;
                 Unmap();
+                buffer = null;
             }
         }
         public void Unmap()
@@ -174,7 +174,7 @@ public class WebGPUBufferDescriptor
     public WebGPUBufferUsage Usage = WebGPUBufferUsage.None;
     public ulong Size;
 
-    internal FFI.WGPUBufferDescriptor ToF(FFIMemoryManager ffiMem, bool mappedAtCreation)
+    internal FFI.WGPUBufferDescriptor ToF(ref FFIStackMemory ffiMem, bool mappedAtCreation)
     {
         return new FFI.WGPUBufferDescriptor()
         {

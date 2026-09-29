@@ -202,8 +202,8 @@ public class WebGPURenderBundleEncoder : IDisposable
                 }
                 else
                 {
-                    using var ffiMem = new FFIMemoryManager(stackalloc byte[16]);
-                    var ffiDesc = renderBundleDescriptor.ToF(ffiMem);
+                    var ffiMem = new FFIStackMemory(stackalloc nint[2]); using var s = FFIStackMemory.BindScope(ref ffiMem);
+                    var ffiDesc = renderBundleDescriptor.ToF(ref ffiMem);
                     return new(new(FFI.WGPURenderBundleEncoder.wgpuRenderBundleEncoderFinish(Native.GetPtr(), &ffiDesc)));
                 }
             }
@@ -252,7 +252,7 @@ public class WebGPURenderBundle : IDisposable
 public class WebGPURenderBundleDescriptor
 {
     public string Label = "";
-    internal unsafe FFI.WGPURenderBundleDescriptor ToF(FFIMemoryManager ffiMem)
+    internal unsafe FFI.WGPURenderBundleDescriptor ToF(ref FFIStackMemory ffiMem)
     {
         return new()
         {
@@ -276,7 +276,7 @@ public class WebGPURenderBundleEncoderDescriptor
 
     public bool StencilReadOnly = false;
 
-    internal unsafe FFI.WGPURenderBundleEncoderDescriptor ToF(FFIMemoryManager ffiMem)
+    internal unsafe FFI.WGPURenderBundleEncoderDescriptor ToF(ref FFIStackMemory ffiMem)
     {
         var colorFormats = ffiMem.AllocateArea<FFI.WGPUTextureFormat>(ColorFormats.Length);
         for (var i = 0; ColorFormats.Length > i; i += 1)

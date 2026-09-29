@@ -12,7 +12,7 @@ public class WebGPUBindGroupDescriptor
     public required WebGPUBindGroupLayout Layout;
     public required WebGPUBindGroupEntry[] Entries;
 
-    internal unsafe FFI.WGPUBindGroupDescriptor ToF(FFIMemoryManager ffiMem)
+    internal unsafe FFI.WGPUBindGroupDescriptor ToF(ref FFIStackMemory ffiMem)
     {
         var ffiEntries = ffiMem.AllocateArea<FFI.WGPUBindGroupEntry>(Entries.Length);
         for (var i = 0; Entries.Length > i; i += 1)
@@ -95,7 +95,7 @@ public class WebGPUBindGroupLayout : IDisposable
     {
         unsafe
         {
-            using var ffiMem = new FFIMemoryManager(stackalloc byte[8]);
+            using var ffiMem = new FFIStackMemory(stackalloc nint[8]);
             FFI.WGPUBindGroupLayout.wgpuBindGroupLayoutSetLabel(Native.GetPtr(), ffiMem.AllocateString(label));
         }
     }
@@ -113,7 +113,7 @@ public class WebGPUBindGroupLayoutDescriptor
 {
     public string Label = "";
     public required WebGPUBindGroupLayoutEntry[] Entries;
-    internal unsafe FFI.WGPUBindGroupLayoutDescriptor ToF(FFIMemoryManager ffiMem)
+    internal unsafe FFI.WGPUBindGroupLayoutDescriptor ToF(ref FFIStackMemory ffiMem)
     {
         var ffiEntries = ffiMem.AllocateArea<FFI.WGPUBindGroupLayoutEntry>(Entries.Length);
         for (var i = 0; Entries.Length > i; i += 1)

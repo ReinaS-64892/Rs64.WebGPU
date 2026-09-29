@@ -10,7 +10,7 @@ namespace Rs64.WebGPU;
 public abstract class WebGPUSurfaceDescriptor
 {
     public string? Label { get; set; }
-    internal abstract unsafe FFI.WGPUChainedStruct* GetExtensionSurfaceSource(StackAllocAsFFIArea area);
+    internal abstract unsafe FFI.WGPUChainedStruct* GetExtensionSurfaceSource(FFIStackMemory ffiMem);
 }
 
 // プラットフォーム固有になるらへんは ... 少なくとも単純に safe にすることは難しいよね ... 
@@ -21,9 +21,9 @@ public unsafe class WebGPUWaylandSurfaceDescriptor : WebGPUSurfaceDescriptor
     public void* Display;
     public void* Surface;
 
-    internal override FFI.WGPUChainedStruct* GetExtensionSurfaceSource(StackAllocAsFFIArea area)
+    internal override FFI.WGPUChainedStruct* GetExtensionSurfaceSource(FFIStackMemory ffiMem)
     {
-        var ssWayland = area.Allocate<FFI.WGPUSurfaceSourceWaylandSurface>();
+        var ssWayland = ffiMem.AllocateArea<FFI.WGPUSurfaceSourceWaylandSurface>();
         ssWayland->NextInChain.StructType = FFI.WGPUSType.SurfaceSourceWaylandSurface;
         ssWayland->Display = Display;
         ssWayland->Surface = Surface;

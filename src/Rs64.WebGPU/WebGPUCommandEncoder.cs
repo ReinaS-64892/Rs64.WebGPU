@@ -347,7 +347,7 @@ public class WebGPUCommandBuffer : IDisposable
     {
         unsafe
         {
-            using var ffiMem = new FFIMemoryManager(stackalloc byte[8]);
+            using var ffiMem = new FFIStackMemory(stackalloc nint[8]);
             FFI.WGPUCommandBuffer.wgpuCommandBufferSetLabel(Native.GetPtr(), ffiMem.AllocateString(label));
         }
     }
@@ -357,7 +357,7 @@ public class WebGPUCommandBuffer : IDisposable
 public class WebGPUCommandEncoderDescriptor
 {
     public string Label = "";
-    internal FFI.WGPUCommandEncoderDescriptor ToF(FFIMemoryManager ffiMem)
+    internal FFI.WGPUCommandEncoderDescriptor ToF(ref FFIStackMemory ffiMem)
     {
         return new()
         {

@@ -116,7 +116,7 @@ public class WebGPUQueue : IDisposable
     {
         unsafe
         {
-            using var ffiMem = new FFIMemoryManager(stackalloc byte[8]);
+            using var ffiMem = new FFIStackMemory(stackalloc nint[1]);
             FFI.WGPUQueue.wgpuQueueSetLabel(Native.GetPtr(), ffiMem.AllocateString(label));
         }
     }

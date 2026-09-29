@@ -16,7 +16,7 @@ public class WebGPUQuerySet : IDisposable
     {
         unsafe
         {
-            using var ffiMem = new FFIMemoryManager(stackalloc byte[8]);
+            using var ffiMem = new FFIStackMemory(stackalloc nint[1]);
             FFI.WGPUQuerySet.wgpuQuerySetSetLabel(Native.GetPtr(), ffiMem.AllocateString(label));
         }
     }
@@ -41,7 +41,7 @@ public class WebGPUQuerySetDescriptor
     public WebGPUQueryType Type;
     public uint Count;
 
-    internal FFI.WGPUQuerySetDescriptor ToF(FFIMemoryManager ffiMem)
+    internal FFI.WGPUQuerySetDescriptor ToF(ref FFIStackMemory ffiMem)
     {
         return new()
         {

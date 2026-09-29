@@ -32,7 +32,7 @@ public class WebGPUShaderModule : IDisposable
     {
         unsafe
         {
-            using var ffiMem = new FFIMemoryManager(stackalloc byte[16]);
+            using var ffiMem = new FFIStackMemory(stackalloc nint[1]);
             FFI.WGPUShaderModule.wgpuShaderModuleSetLabel(Native.GetPtr(), ffiMem.AllocateString(label));
         }
     }
@@ -124,14 +124,14 @@ public abstract class WebGPUShaderModuleDescriptor
 {
     public string Label = "";
 
-    internal abstract FFI.WGPUShaderModuleDescriptor ToF(FFIMemoryManager ffiMem);
+    internal abstract FFI.WGPUShaderModuleDescriptor ToF(ref FFIStackMemory ffiMem);
 }
 
 [FFINote(typeof(FFI.WGPUShaderSourceSpirv))]
 public class WebGPUSpirvShaderModuleDescriptor : WebGPUShaderModuleDescriptor
 {
     public required uint[] Code;
-    internal unsafe override FFI.WGPUShaderModuleDescriptor ToF(FFIMemoryManager ffiMem)
+    internal unsafe override FFI.WGPUShaderModuleDescriptor ToF(ref FFIStackMemory ffiMem)
     {
         var source = ffiMem.AllocateArea<FFI.WGPUShaderSourceSpirv>();
         source->NextInChain.StructType = FFI.WGPUSType.ShaderSourceSpirv;
@@ -149,7 +149,7 @@ public class WebGPUSpirvShaderModuleDescriptor : WebGPUShaderModuleDescriptor
 public class WebGPUWgslShaderModuleDescriptor : WebGPUShaderModuleDescriptor
 {
     public string Code = "";
-    internal unsafe override FFI.WGPUShaderModuleDescriptor ToF(FFIMemoryManager ffiMem)
+    internal unsafe override FFI.WGPUShaderModuleDescriptor ToF(ref FFIStackMemory ffiMem)
     {
         var source = ffiMem.AllocateArea<FFI.WGPUShaderSourceWgsl>();
         source->NextInChain.StructType = FFI.WGPUSType.ShaderSourceWgsl;

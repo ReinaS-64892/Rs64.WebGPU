@@ -25,21 +25,21 @@ public class WebGPURenderPipelineDescriptor
     public WebGPUMultisampleState Multisample = new();
     public WebGPUFragmentState? Fragment;
 
-    internal FFI.WGPURenderPipelineDescriptor ToF(FFIMemoryManager ffiMem)
+    internal FFI.WGPURenderPipelineDescriptor ToF(ref FFIStackMemory ffiMem)
     {
         unsafe
         {
-            var ds = DepthStencil is not null ? DepthStencil.ToF() : default;
-            var fs = Fragment is not null ? Fragment.ToF(ffiMem) : default;
+            var ds = DepthStencil is not null ? ffiMem.CopyToAllocate(DepthStencil.ToF()) : default;
+            var fs = Fragment is not null ? ffiMem.CopyToAllocate(Fragment.ToF(ref ffiMem)) : default;
             return new()
             {
                 Label = ffiMem.AllocateString(Label),
                 Layout = Layout is not null ? Layout.Native.GetPtr() : null,
-                Vertex = Vertex.ToF(ffiMem),
+                Vertex = Vertex.ToF(ref ffiMem),
                 Primitive = Primitive.ToF(),
-                DepthStencil = DepthStencil is not null ? &ds : null,
+                DepthStencil = ds,
                 Multisample = Multisample.ToF(),
-                Fragment = Fragment is not null ? &fs : null,
+                Fragment = fs,
             };
         }
     }
@@ -52,12 +52,12 @@ public class WebGPUFragmentState
     public string? EntryPoint;
     public WebGPUConstantEntry[] Constants = [];
     public WebGPUColorTargetState[] Targets = [];
-    internal unsafe FFI.WGPUFragmentState ToF(FFIMemoryManager ffiMem)
+    internal unsafe FFI.WGPUFragmentState ToF(ref FFIStackMemory ffiMem)
     {
-        var constants = stackalloc FFI.WGPUConstantEntry[Constants.Length];
-        for (var i = 0; Constants.Length > i; i += 1) { constants[i] = Constants[i].ToF(ffiMem); }
-        var targets = stackalloc FFI.WGPUColorTargetState[Targets.Length];
-        for (var i = 0; Targets.Length > i; i += 1) { targets[i] = Targets[i].ToF(ffiMem); }
+        var constants = ffiMem.AllocateArea<FFI.WGPUConstantEntry>(Constants.Length);
+        for (var i = 0; Constants.Length > i; i += 1) { constants[i] = Constants[i].ToF(ref ffiMem); }
+        var targets = ffiMem.AllocateArea<FFI.WGPUColorTargetState>(Targets.Length);
+        for (var i = 0; Targets.Length > i; i += 1) { targets[i] = Targets[i].ToF(ref ffiMem); }
         return new()
         {
             Module = Module.Native.GetPtr(),
@@ -77,15 +77,9 @@ public class WebGPUColorTargetState
     public WebGPUBlendState? Blend;
     public WebGPUColorWriteMask WriteMask = WebGPUColorWriteMask.All;
 
-    internal unsafe FFI.WGPUColorTargetState ToF(FFIMemoryManager ffiMem)
+    internal unsafe FFI.WGPUColorTargetState ToF(scoped ref FFIStackMemory ffiMem)
     {
-        FFI.WGPUBlendState* blend = null;
-        if (Blend is not null)
-        {
-            blend = ffiMem.AllocateArea<FFI.WGPUBlendState>();
-            blend->Color = Blend.Value.Color.ToF();
-            blend->Alpha = Blend.Value.Alpha.ToF();
-        }
+        var blend = Blend.HasValue ? ffiMem.CopyToAllocate(Blend.Value.ToF()) : null;
         return new()
         {
             Format = Format.ToF(),
@@ -100,6 +94,14 @@ public struct WebGPUBlendState
 {
     public WebGPUBlendComponent Color;
     public WebGPUBlendComponent Alpha;
+    internal FFI.WGPUBlendState ToF()
+    {
+        return new()
+        {
+            Color = Color.ToF(),
+            Alpha = Alpha.ToF(),
+        };
+    }
 }
 
 [FFINote(typeof(FFI.WGPUBlendComponent))]
@@ -218,12 +220,12 @@ public class WebGPUVertexState
     public WebGPUConstantEntry[] Constants = [];
     public WebGPUVertexBufferLayout[] Buffers = [];
 
-    internal unsafe FFI.WGPUVertexState ToF(FFIMemoryManager ffiMem)
+    internal unsafe FFI.WGPUVertexState ToF(ref FFIStackMemory ffiMem)
     {
-        var constants = stackalloc FFI.WGPUConstantEntry[Constants.Length];
-        for (var i = 0; Constants.Length > i; i += 1) { constants[i] = Constants[i].ToF(ffiMem); }
-        var buffers = stackalloc FFI.WGPUVertexBufferLayout[Buffers.Length];
-        for (var i = 0; Buffers.Length > i; i += 1) { buffers[i] = Buffers[i].ToF(ffiMem); }
+        var constants = ffiMem.AllocateArea<FFI.WGPUConstantEntry>(Constants.Length);
+        for (var i = 0; Constants.Length > i; i += 1) { constants[i] = Constants[i].ToF(ref ffiMem); }
+        var buffers = ffiMem.AllocateArea<FFI.WGPUVertexBufferLayout>(Buffers.Length);
+        for (var i = 0; Buffers.Length > i; i += 1) { buffers[i] = Buffers[i].ToF(ref ffiMem); }
         return new()
         {
             Module = Module.Native.GetPtr(),
@@ -242,9 +244,9 @@ public class WebGPUVertexBufferLayout
     public WebGPUVertexStepMode? StepMode;
     public ulong ArrayStride;
     public WebGPUVertexAttribute[] Attributes = [];
-    internal unsafe FFI.WGPUVertexBufferLayout ToF(FFIMemoryManager ffiMem)
+    internal unsafe FFI.WGPUVertexBufferLayout ToF(scoped ref FFIStackMemory ffiMem)
     {
-        var attributes = stackalloc FFI.WGPUVertexAttribute[Attributes.Length];
+        var attributes = ffiMem.AllocateArea<FFI.WGPUVertexAttribute>(Attributes.Length);
         for (var i = 0; Attributes.Length > i; i += 1) { attributes[i] = Attributes[i].ToF(); }
         return new()
         {

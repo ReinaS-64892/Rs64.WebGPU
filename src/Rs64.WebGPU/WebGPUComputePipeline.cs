@@ -24,7 +24,7 @@ public class WebGPUComputePipeline : IDisposable
     {
         unsafe
         {
-            using var ffiMem = new FFIMemoryManager(stackalloc byte[8]);
+            using var ffiMem = new FFIStackMemory(stackalloc nint[8]);
             FFI.WGPUComputePipeline.wgpuComputePipelineSetLabel(Native.GetPtr(), ffiMem.AllocateString(label));
         }
     }
@@ -38,13 +38,13 @@ public class WebGPUComputePipelineDescriptor
     public WebGPUPipelineLayout? Layout;
     public required WebGPUComputeState Compute;
 
-    internal unsafe FFI.WGPUComputePipelineDescriptor ToF(FFIMemoryManager ffiMem)
+    internal unsafe FFI.WGPUComputePipelineDescriptor ToF(ref FFIStackMemory ffiMem)
     {
         return new()
         {
             Layout = Layout is not null ? Layout.Native.GetPtr() : null,
             Label = ffiMem.AllocateString(Label),
-            Compute = Compute.ToF(ffiMem)
+            Compute = Compute.ToF(ref ffiMem)
         };
     }
 }
@@ -59,7 +59,7 @@ public class WebGPUPipelineLayout : IDisposable
     {
         unsafe
         {
-            using var ffiMem = new FFIMemoryManager(stackalloc byte[8]);
+            using var ffiMem = new FFIStackMemory(stackalloc nint[1]);
             FFI.WGPUPipelineLayout.wgpuPipelineLayoutSetLabel(Native.GetPtr(), ffiMem.AllocateString(label));
         }
     }
@@ -73,9 +73,9 @@ public class WebGPUPipelineLayoutDescriptor
     public required WebGPUBindGroupLayout[] BindGroupLayouts;
     public uint ImmediateSize = 0;
 
-    internal unsafe FFI.WGPUPipelineLayoutDescriptor ToF(FFIMemoryManager ffiMem)
+    internal unsafe FFI.WGPUPipelineLayoutDescriptor ToF(ref FFIStackMemory ffiMem)
     {
-        var bindGroupLayoutsPtr = (FFI.WGPUBindGroupLayout**)ffiMem.stackArea.Allocate<IntPtr>(BindGroupLayouts.Length);
+        var bindGroupLayoutsPtr = (FFI.WGPUBindGroupLayout**)ffiMem.AllocateArea<IntPtr>(BindGroupLayouts.Length);
         for (var i = 0; BindGroupLayouts.Length > i; i += 1)
         {
             bindGroupLayoutsPtr[i] = BindGroupLayouts[i].Native.GetPtr();
@@ -98,12 +98,12 @@ public class WebGPUComputeState
     public string? EntryPoint = null;
     public WebGPUConstantEntry[] Constants = [];
 
-    internal unsafe FFI.WGPUComputeState ToF(FFIMemoryManager ffiMem)
+    internal unsafe FFI.WGPUComputeState ToF(ref FFIStackMemory ffiMem)
     {
-        var constants = ffiMem.stackArea.Allocate<FFI.WGPUConstantEntry>(Constants.Length);
+        var constants = ffiMem.AllocateArea<FFI.WGPUConstantEntry>(Constants.Length);
         for (var i = 0; Constants.Length > i; i += 1)
         {
-            constants[i] = Constants[i].ToF(ffiMem);
+            constants[i] = Constants[i].ToF(ref ffiMem);
         }
         return new()
         {
@@ -121,7 +121,7 @@ public class WebGPUConstantEntry
     public string Key = "";
     public double Value;
 
-    internal FFI.WGPUConstantEntry ToF(FFIMemoryManager ffiMem)
+    internal FFI.WGPUConstantEntry ToF(scoped ref FFIStackMemory ffiMem)
     {
         return new()
         {
