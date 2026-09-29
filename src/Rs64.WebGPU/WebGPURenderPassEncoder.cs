@@ -249,7 +249,7 @@ public class WebGPURenderPassEncoder : IDisposable
             FFI.WGPURenderPassEncoder.wgpuRenderPassEncoderEndOcclusionQuery(Native.GetPtr());
         }
     }
-    public void End()
+    internal void End()
     {
         unsafe
         {
