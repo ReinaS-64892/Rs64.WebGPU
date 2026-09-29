@@ -1,0 +1,7 @@
+<Project>
+  <PropertyGroup>
+    <BaseIntermediateOutputPath>../artifact/obj/$(MSBuildProjectName)</BaseIntermediateOutputPath>
+    <OutputPath>../artifact/bin/$(MSBuildProjectName)/$(Configuration)</OutputPath>
+    <CompilerGeneratedFilesOutputPath>../artifact/gen/$(MSBuildProjectName)</CompilerGeneratedFilesOutputPath>
+  </PropertyGroup>
+</Project>
