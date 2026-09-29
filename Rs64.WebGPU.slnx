@@ -1,6 +1,7 @@
 <Solution>
   <Folder Name="/example/">
     <Project Path="example/HelloTriangle/HelloTriangle.csproj" />
+    <Project Path="example/OffscreenRendering/OffscreenRendering.csproj" />
   </Folder>
   <Folder Name="/src/">
     <Project Path="src/Rs64.WebGPU.Binary.wgpu-native/Rs64.WebGPU.Binary.wgpu-native.csproj" />
