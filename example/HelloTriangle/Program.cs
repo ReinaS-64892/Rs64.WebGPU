@@ -1,11 +1,11 @@
 ﻿// SPDX-FileCopyrightText: 2026 Reina_Sakiria
 // SPDX-License-Identifier: MPL-2.0
 
-using Rs64.WebGPU;
-using NWayland.Protocols.Wayland;
-using NWayland.Protocols.XdgShell;
 using System.Numerics;
 using System.Runtime.InteropServices;
+using NWayland.Protocols.Wayland;
+using NWayland.Protocols.XdgShell;
+using Rs64.WebGPU;
 
 const string WGSL_VERT =
 """
@@ -98,6 +98,7 @@ while (task.Task.IsCompleted is false)
 }
 
 using var instance = WebGpu.CreateInstance();
+
 var webGPUSurface = CreateFromWaylandSurface(instance, display, surface);
 
 using var adapter = await instance.RequestAdapter(new() { CompatibleSurface = webGPUSurface, });
@@ -130,11 +131,8 @@ using (var mapBuffer = vertexBufferMapped.Mapped)
         new(0.5f, -0.5f, 0.0f),
         new(0.0f, 0.5f, 0.0f),
     ];
-    var range = mapBuffer.GetMappedRange();
-    MemoryMarshal.Cast<Vector3, byte>(vertex).CopyTo(range);
 
-    // wgpu unimplemented ...
-    // mapBuffer.WriteMappedRange(MemoryMarshal.Cast<Vector3, byte>(vertex));
+    mapBuffer.WriteMappedRange(MemoryMarshal.Cast<Vector3, byte>(vertex));
 }
 var vertexBuffer = vertexBufferMapped.Buffer;
 
@@ -148,9 +146,7 @@ using var fragmentShader = device.CreateShaderModule(new WebGPUWgslShaderModuleD
     Label = "fragment shader ht",
     Code = WGSL_FRAG,
 });
-using var pipeline = device.CreateRenderPipeline(new()
-// wgpu unimplemented ... 
-// using var pipeline = await device.CreateRenderPipelineAsync(new()
+using var pipeline = await device.CreateRenderPipelineAsync(new()
 {
     Label = "render pipe line",
     Vertex = new()

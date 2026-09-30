@@ -68,8 +68,8 @@ using (var mapBuffer = vertexBufferMapped.Mapped)
         new(0.5f, -0.5f, 0.0f),
         new(0.0f, 0.5f, 0.0f),
     ];
-    var range = mapBuffer.GetMappedRange();
-    MemoryMarshal.Cast<Vector3, byte>(vertex).CopyTo(range);
+    
+    mapBuffer.WriteMappedRange(MemoryMarshal.Cast<Vector3, byte>(vertex));
 }
 var vertexBuffer = vertexBufferMapped.Buffer;
 var outputBufferSize = 512u * 512 * 4;
@@ -91,9 +91,7 @@ using var fragmentShader = device.CreateShaderModule(new WebGPUWgslShaderModuleD
     Code = WGSL_FRAG,
 });
 
-using var pipeline = device.CreateRenderPipeline(new()
-// wgpu unimplemented ... 
-// using var pipeline = await device.CreateRenderPipelineAsync(new()
+using var pipeline = await device.CreateRenderPipelineAsync(new()
 {
     Label = "render pipe line",
     Vertex = new()
