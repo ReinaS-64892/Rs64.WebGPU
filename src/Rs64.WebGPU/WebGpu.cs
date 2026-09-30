@@ -37,7 +37,15 @@ public partial class WebGpu
 
     public static WebGpuInstanceDescriptor GetInstanceDescriptor()
     {
-        var id = new WebGpuInstanceDescriptor();
+        return new()
+        {
+            RequiredFeatures = GetInstanceFeatures(),
+            RequiredLimit = GetInstanceLimits()
+        };
+    }
+    public static HashSet<WebGPUInstanceFeatureName> GetInstanceFeatures()
+    {
+        var output = new HashSet<WebGPUInstanceFeatureName>();
         unsafe
         {
             FFI.WGPUSupportedInstanceFeatures ffiFeatures;
@@ -45,20 +53,22 @@ public partial class WebGpu
             var names = new ReadOnlySpan<FFI.WGPUInstanceFeatureName>(ffiFeatures.Features, (int)ffiFeatures.FeaturesCount);
             foreach (var name in names)
             {
-                id.RequiredFeatures.Add(name.ToW());
+                output.Add(name.ToW());
             }
             FFI.WGPUSupportedInstanceFeatures.FreeMembers(ref ffiFeatures);
         }
+        return output;
+    }
+    public static WebGPUInstanceLimits GetInstanceLimits()
+    {
+        var l = new WebGPUInstanceLimits();
         unsafe
         {
-            var l = new WebGPUInstanceLimits();
-            id.RequiredLimit = l;
-
             FFI.WGPUInstanceLimits instanceLimits;
             FFI.Webgpu.wgpuGetInstanceLimits(&instanceLimits);
             l.TimedWaitAnyMaxCount = instanceLimits.TimedWaitAnyMaxCount;
         }
-        return id;
+        return l;
     }
 
     public static bool HasInstanceFeature(WebGPUInstanceFeatureName feature)
